@@ -28,7 +28,7 @@ Built for Chromium browsers (Chrome, Edge, Brave, Arc, Opera).
 ## Third-party data
 
 - **AniList** — public anime metadata (tags, community scores, recommendations) via `graphql.anilist.co`.
-- **anime-offline-database** ([manami-project](https://github.com/manami-project/anime-offline-database)) — a public dataset fetched at runtime to map Crunchyroll titles to AniList IDs. Not bundled here.
+- **anime-offline-database** ([manami-project](https://github.com/manami-project/anime-offline-database)) — fetched at runtime to map Crunchyroll titles to AniList IDs and supplement sparse tags. Licensed under [ODbL v1.0](https://opendatacommons.org/licenses/odbl/1-0/) (+ DbCL v1.0); used by attribution, not bundled or redistributed here.
 - The optional collaborative-filtering re-ranker (off by default) relies on pre-trained model files that are **not included in this repository** due to source-dataset licensing; the extension builds and runs without them.
 
 ## License
