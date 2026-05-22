@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bingeprint — Smart Scoring for Crunchyroll",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Smart Score taste overlay for Crunchyroll — scores on series pages + taste-shape popup. Not affiliated with Crunchyroll.",
   "homepage_url": "https://github.com/anitastic-pixel/Bingeprint",
   "icons": {
@@ -44,7 +44,7 @@
         "survey-genre-anchors.js",
         "images/covers/*"
       ],
-      "matches": ["https://www.crunchyroll.com/*", "<all_urls>"]
+      "matches": ["https://www.crunchyroll.com/*"]
     }
   ],
   "content_scripts": [
