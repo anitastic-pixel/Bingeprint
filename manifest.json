@@ -42,11 +42,7 @@
         "survey.css",
         "survey-anchors.js",
         "survey-genre-anchors.js",
-        "images/covers/*",
-        "cf-embeddings.bin",
-        "cf-embeddings.meta.json",
-        "cf-projection.bin",
-        "cf-projection.json"
+        "images/covers/*"
       ],
       "matches": ["https://www.crunchyroll.com/*", "<all_urls>"]
     }
