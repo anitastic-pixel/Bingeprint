@@ -1,0 +1,1993 @@
+:root {
+  --bg: #0c0c0c;
+  --card: #1a1a1a;
+  --card-hover: #232323;
+  --text: #f8f8f8;
+  --text-2: #a0a0a0;
+  --text-3: #707070;
+  --accent: #f47521;
+  --accent-dim: #b85618;
+  --border: #2a2a2a;
+  --good: #4caf50;
+  --mid: #f47521;
+  --low: #777;
+}
+
+/* Mode-aware tone shift. Peak should feel sharp + bright (dropping a
+   hot pick); comfort should feel warm + relaxed (a quiet rec for a
+   slow night). Same content, different *energy*. */
+body.mode-peak {
+  --accent: #ff8c28;       /* hotter, more saturated orange */
+  --card: #181818;
+  --card-hover: #242424;
+}
+body.mode-peak .card-title {
+  font-weight: 700;
+  letter-spacing: -0.15px;
+}
+body.mode-peak .brand-name { letter-spacing: 0.4px; }
+
+body.mode-comfort {
+  --accent: #f0a060;       /* softer, creamier orange */
+  --accent-dim: #b87a40;
+  --card: #1c1816;          /* warmer card surface */
+  --card-hover: #25201d;
+  --bg: #0e0c0a;
+}
+body.mode-comfort .card-title {
+  font-weight: 500;
+  letter-spacing: 0.1px;
+}
+body.mode-comfort .tag-chip {
+  background: rgba(240, 160, 96, 0.10);
+  border-color: rgba(240, 160, 96, 0.24);
+  color: var(--accent);
+}
+
+/* ── G10: Surface toggle (Picks ↔ Shape) ───────────────────── */
+.surface-toggle {
+  display: flex;
+  gap: 0;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.surface-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 10px 0;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 120ms, border-color 120ms;
+}
+.surface-tab:hover { color: var(--text); }
+.surface-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+/* Surface containers fill the remaining body height (below the
+   header + surface-toggle) and host their own scrolling inner area.
+   Without flex:1 the rec-list's flex:1 wouldn't reach the bottom
+   anymore (it's no longer a direct child of body). */
+.surface {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* allow inner overflow to scroll */
+}
+.surface.hidden { display: none; }
+.surface-shape { overflow-y: auto; }
+
+/* ── G09 + 2026-05-03 identity-primary pass: Shape view ─────── */
+.surface-shape {
+  padding: 18px 18px 24px;
+  /* Stacking context for the panel-wide BG motif. The motif element
+     is the first child, position:absolute / inset:0 so it spans the
+     full scrollable content. All other Shape-surface descendants live
+     above it via the z-index rule below. */
+  position: relative;
+  /* Family palette CSS custom properties — set inline by sidepanel.js
+     renderShape from radar.familyBaseHsl + radar.archetypeHsl.
+     Defaults below are brand orange (Mixed family) so the header reads
+     correctly even if the radar is missing palette fields (older
+     cached records before schema 25). */
+  --family-h: 25;
+  --family-s: 100%;
+  --family-l: 58%;
+  --arch-h: 25;
+  --arch-s: 100%;
+  --arch-l: 58%;
+  /* Tinted neutrals — OKLCH so chroma stays perceptually constant
+     across hues. The archetype hue carries through in three tiers:
+     --text-on-tint    → radar SVG axis labels (consumed inline by
+                         buildRadarSvg). Slightly more chroma so the
+                         label reads as belonging to the polygon.
+     --text-shape-prose → italic prose body. High lightness, low
+                          chroma so the friend-voice quote sits in
+                          the family palette without losing legibility.
+     --text-shape-tagline → adjective byline under the headline. Mid
+                            lightness + bumped chroma so the small
+                            text registers as tinted rather than gray. */
+  --arch-h-deg: calc(var(--arch-h) * 1deg);
+  /* Chroma tuned per-tier so the tint reads at each lightness. At
+     near-white (prose, 0.90+) chroma needs ~0.05 to register as
+     tinted instead of pure white; at mid (axis labels, 0.80) chroma
+     pushes to 0.06 to compete visually with the colored polygon. */
+  --text-on-tint: oklch(0.80 0.080 var(--arch-h-deg));
+  --text-shape-prose: oklch(0.87 0.085 var(--arch-h-deg));
+  --text-shape-tagline: oklch(0.74 0.060 var(--arch-h-deg));
+  /* Axis-row name tiers — tier-top is brightest, tier-weak is the
+     muted bottom of the legend. Both carry the family hue so the
+     legend reads as belonging to the radar above it.
+
+     Note on chroma at high lightness: above L 0.90 sRGB gamut starts
+     compressing chroma toward white, so the tint reads as washed-out
+     even when nominal chroma is moderate. Tier-top sits at L 0.89
+     (just below the wash-out shelf) with chroma 0.095 so the family
+     hue stays visible across all eight palettes. */
+  --text-shape-axis-top: oklch(0.89 0.095 var(--arch-h-deg));
+  --text-shape-axis-weak: oklch(0.60 0.055 var(--arch-h-deg));
+}
+
+/* Phase 2: Panel-wide family BG motif (canvas, 2026-05). Hosts the
+   per-family canvas painter mounted by mountShapeCanvas. The canvas
+   sizes itself to the surface's scrollHeight so the wallpaper extends
+   below-the-fold for scrolled content. pointer-events:none lets clicks
+   pass through to interactive elements above. */
+.shape-panel-motif {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.shape-panel-motif canvas {
+  width: 100%;
+  height: auto;
+  min-height: 100%;
+  display: block;
+}
+/* Lift every other direct child above the motif. :not(.shape-panel-motif)
+   covers shape-header, shape-radar, shape-prose, shape-cold-cta,
+   shape-axes, dev-sandbox, etc., without having to enumerate. */
+.surface-shape > *:not(.shape-panel-motif) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Header card: kicker + name + tagline + optional caveat. Family-tinted
+   gradient bg gives the identity headline tribe-aware presence —
+   crimson for Drama, teal for Mystery, etc. — without screaming. */
+.shape-header {
+  text-align: center;
+  margin-bottom: 18px;
+  padding: 22px 16px 18px;
+  background: linear-gradient(180deg,
+    hsla(var(--family-h), var(--family-s), var(--family-l), 0.14) 0%,
+    hsla(var(--family-h), var(--family-s), var(--family-l), 0.04) 65%,
+    transparent 100%);
+  border-radius: 12px;
+  position: relative;
+}
+/* Motion toggle — small pill in the header's top-right corner that
+   flips the animated wallpaper on/off. Inactive state dims + strikes
+   through the ✦ icon so the off-state reads at a glance. */
+.shape-motion-toggle {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 10px;
+  letter-spacing: 0.4px;
+  color: var(--text-3);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
+  z-index: 1;
+}
+.shape-motion-toggle:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--text);
+}
+.shape-motion-toggle .motion-icon { font-size: 11px; }
+.shape-motion-toggle.is-static { opacity: 0.65; }
+.shape-motion-toggle.is-static .motion-icon {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.shape-kicker {
+  display: block;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  opacity: 0.75;
+}
+.shape-name {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  /* Headline takes the archetype hue, brightened for legibility on
+     dark bg. Each archetype gets a unique shade within its family. */
+  color: hsl(var(--arch-h), var(--arch-s), calc(var(--arch-l) + 15%));
+  letter-spacing: -0.4px;
+  line-height: 1.15;
+  text-shadow: 0 0 24px hsla(var(--arch-h), var(--arch-s), var(--arch-l), 0.22);
+}
+.shape-tagline {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: var(--text-shape-tagline, var(--text-2));
+  letter-spacing: 0.2px;
+  font-weight: 500;
+}
+/* Family pill — small chip below tagline naming the tribe (Drama,
+   Mystery, etc.) in muted family color. Hidden for Mixed since
+   "Mixed" isn't a real tribe. The two-tier identity (family pill +
+   archetype headline) lets users decode the color system without
+   guessing what crimson means. */
+.shape-family-pill {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 2px 9px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: hsl(var(--family-h), var(--family-s), calc(var(--family-l) + 12%));
+  background: hsla(var(--family-h), var(--family-s), var(--family-l), 0.12);
+  border: 1px solid hsla(var(--family-h), var(--family-s), var(--family-l), 0.30);
+  border-radius: 999px;
+}
+.shape-family-pill[hidden] { display: none; }
+
+.shape-caveat {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 3px 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-3);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 999px;
+}
+/* The class rule above sets display:inline-block which overrides
+   the HTML `hidden` attribute's UA `display:none`. Restore it. */
+.shape-caveat[hidden] { display: none; }
+
+.shape-radar {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: 4px 0 14px;
+}
+.shape-radar svg {
+  display: block;
+  width: 100%;
+  /* viewBox is 400 wide (includes axis-label margin so labels live inside
+     the SVG bounds). Cap CSS width at the viewBox so wide panels don't
+     balloon the radar; narrow panels scale the SVG (and its labels,
+     since font-size is in user units) proportionally smaller. */
+  max-width: 400px;
+  height: auto;
+  margin: 0 auto;
+}
+
+/* Pull-quote prose treatment. Italic + decorative quote marks at the
+   corners say "what the friend says about you." Centered, max-width
+   capped so wide panels don't stretch into a single line. */
+.shape-prose {
+  position: relative;
+  color: var(--text-shape-prose, var(--text));
+  font-size: 15px;
+  font-style: italic;
+  line-height: 1.65;
+  text-align: center;
+  margin: 4px auto 18px;
+  padding: 8px 28px 12px;
+  max-width: 480px;
+}
+.shape-prose::before,
+.shape-prose::after {
+  position: absolute;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 40px;
+  line-height: 1;
+  color: hsla(var(--arch-h), var(--arch-s), var(--arch-l), 0.40);
+  font-style: normal;
+}
+.shape-prose::before { content: '\201C'; left: 12px; top: -2px; }
+.shape-prose::after  { content: '\201D'; right: 12px; bottom: -6px; }
+
+/* Cold-start CTA: shows when the user has no taste vector yet.
+   Gentle prompt to take the survey. Cold-start has no family yet so
+   this stays in brand orange territory via the Mixed defaults. */
+.shape-cold-cta {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-2);
+  padding: 14px;
+  background: hsla(var(--family-h), var(--family-s), var(--family-l), 0.05);
+  border: 1px dashed hsla(var(--family-h), var(--family-s), var(--family-l), 0.30);
+  border-radius: 10px;
+}
+.shape-cold-cta a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.shape-cold-cta a:hover { text-decoration: underline; }
+.shape-cold-cta[hidden] { display: none; }
+/* .shape-axes is the grid container; each .axis-row is a subgrid that
+   inherits the parent column widths. Without subgrid each row computed
+   its own column widths, so a long label ("Comedy / Chaos Appetite")
+   pushed its bar's left edge right, while a short label ("Spectacle
+   Drive") left the bar starting further left — the eye couldn't scan
+   the bars as a uniform meter strip.
+   Column 1 (name): max-content shared across rows → all rows match
+     the widest label.
+   Column 2 (bar):  1fr → fills remaining horizontal space; same width
+     on every row.
+   Column 3 (value): 32px → tabular-nums numeric, fits 3 digits ("100")
+     plus a sliver of breathing room.
+   Detail rows span all three columns. */
+.shape-axes {
+  display: grid;
+  grid-template-columns: max-content minmax(60px, 1fr) 32px;
+  column-gap: 12px;
+  row-gap: 0;
+  font-size: 12px;
+  color: var(--text-2);
+  border-top: 1px solid var(--border);
+  padding: 8px 12px 0;
+}
+/* Each axis row is a button that expands a detail panel below.
+   Adds a bar viz (left of value) so the eye can scan the shape
+   linearly without doing radar-polygon math. Top 3 are tinted
+   accent; weak (<0.2) are muted. Hover/click syncs with radar
+   labels via data-axis-id (see sidepanel.js wireShapeSync). */
+.shape-axes .axis-row {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  column-gap: inherit;
+  align-items: center;
+  padding: 9px 6px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+  color: var(--text-2);
+  transition: background 120ms ease;
+}
+.shape-axes .axis-detail {
+  grid-column: 1 / -1;
+}
+.shape-axes .axis-row:hover,
+.shape-axes .axis-row.is-hovered {
+  background: hsla(var(--arch-h), var(--arch-s), var(--arch-l), 0.05);
+}
+.shape-axes .axis-row[aria-expanded="true"] {
+  background: hsla(var(--arch-h), var(--arch-s), var(--arch-l), 0.10);
+}
+.shape-axes .axis-name { color: var(--text-shape-prose, var(--text)); font-weight: 500; }
+.shape-axes .axis-value {
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--arch-h), var(--arch-s), calc(var(--arch-l) + 10%));
+  font-weight: 600;
+  font-size: 12.5px;
+  text-align: right;
+}
+
+/* Bar viz: track + fill. Fill width set inline via --bar-fill.
+   Tier modifiers below recolor the fill. */
+.shape-axes .axis-bar {
+  position: relative;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.shape-axes .axis-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--bar-fill, 0%);
+  background: rgba(255, 255, 255, 0.20);
+  border-radius: inherit;
+  transition: width 240ms ease;
+}
+/* Tier highlighting: top 3 axes use the archetype-hue gradient
+   (light → base lightness within the family palette). Weak axes
+   (<0.2) keep the muted track tone but dim the value. */
+.shape-axes .axis-row.tier-top .axis-bar-fill {
+  background: linear-gradient(90deg,
+    hsl(var(--arch-h), var(--arch-s), calc(var(--arch-l) + 12%)) 0%,
+    hsl(var(--arch-h), var(--arch-s), var(--arch-l)) 100%);
+  box-shadow: 0 0 8px hsla(var(--arch-h), var(--arch-s), var(--arch-l), 0.35);
+}
+.shape-axes .axis-row.tier-top .axis-name { color: var(--text-shape-axis-top, var(--text)); font-weight: 600; }
+.shape-axes .axis-row.tier-top .axis-value { color: hsl(var(--arch-h), var(--arch-s), calc(var(--arch-l) + 15%)); }
+.shape-axes .axis-row.tier-weak .axis-name { color: var(--text-shape-axis-weak, var(--text-3)); }
+.shape-axes .axis-row.tier-weak .axis-value { color: var(--text-shape-axis-weak, var(--text-3)); font-weight: 500; }
+.shape-axes .axis-row.tier-weak .axis-bar-fill {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+/* Radar polygon + vertex glyphs — colors driven by the archetype HSL
+   custom props so each archetype's polygon reads in its family's
+   palette (crimson for Drama, teal for Mystery, etc.). */
+.shape-radar svg .radar-polygon {
+  stroke: hsl(var(--arch-h), var(--arch-s), var(--arch-l));
+}
+.shape-radar svg .radar-vertex {
+  fill: hsl(var(--arch-h), var(--arch-s), var(--arch-l));
+}
+
+/* Line treatments — switched by data-line-treatment on the <svg>
+   root. 'solid' is the baseline (no extra rules, current stroke-width
+   in the SVG attr). 'double' renders an additional .radar-polygon-double
+   path BENEATH the main polygon as a wider, lighter stroke — reads as
+   layered/carved. 'halo' uses the radarGlowHalo filter inline (set in
+   sidepanel.js) so the polygon's outer glow extends further; we
+   additionally bump stroke-width on the main polygon for visual
+   weight balance against the larger glow. */
+.shape-radar svg .radar-polygon-double {
+  /* Outer parallel stroke — same hue but slightly desaturated and
+     darker, sits beneath the main stroke. The compositing trick: a
+     5px wide path under a 2px wide path produces a ~1.5px halo edge
+     of the lighter color around the main stroke. */
+  stroke: hsla(var(--arch-h), calc(var(--arch-s) - 15%), calc(var(--arch-l) - 8%), 0.85);
+}
+.shape-radar svg[data-line-treatment="halo"] .radar-polygon {
+  stroke-width: 2.5;
+}
+
+/* ── Phase 3: Shape tab intro animation (2026-05) ───────────
+   Plays once on Shape-tab open + on real radar data update. JS adds
+   .is-entering on .surface-shape (single source of truth — selectors
+   anchor on this so SVG/motif inner-html rewrites don't lose state).
+   Cleanup setTimeout removes both .is-entering and .intro-armed ~3.1s
+   later so the next trigger restarts cleanly.
+
+   Sequence (total ~2.9s, each layer has its own discrete beat):
+     0–500:     BG motif fades in (opens the canvas)
+     250–800:   Grid + spokes + ticks fade in (250ms after BG begins)
+     800–2000:  Polygon stroke traces clockwise (1.2s — slow, dramatic)
+     1800–2250: Polygon fill warms in (200ms behind stroke's end)
+     2100–2785: Vertices fade in one by one (8 × 85ms stagger, 200ms each)
+     2500–2900: Header name lifts up
+
+   prefers-reduced-motion: reduce wins by virtue of the @media wrapper
+   below + an override that strips the intro-armed from-state so
+   motion-sensitive users see fully-rendered elements with no flicker.
+
+   The .intro-armed class on .surface-shape sets every animated child
+   to its keyframe from-state by default. This means a freshly-opened
+   panel doesn't briefly flash the fully-rendered Shape view before
+   the intro starts — it boots invisible, then animates in. After the
+   animation completes the JS cleanup strips intro-armed and elements
+   use the base (visible) CSS, so dev-sandbox slider tweaks (which
+   re-render without triggering the intro) display correctly. */
+
+/* Default state for animated stroke paths: pathLength=100 + dasharray
+   100 means "one solid 100-unit dash covering the full perimeter."
+   Equivalent to no dashes when dashoffset is 0; the from-state below
+   sets dashoffset to 100 (= invisible) and the animation animates to 0. */
+.shape-radar svg .radar-polygon,
+.shape-radar svg .radar-polygon-double {
+  stroke-dasharray: 100;
+}
+
+/* From-state defaults — applied via .intro-armed on .surface-shape.
+   These match the from-state of each keyframe so when is-entering is
+   added the animation begins exactly where the static state already
+   is, with no visible snap. */
+.surface-shape.intro-armed > .shape-panel-motif {
+  opacity: 0;
+}
+.surface-shape.intro-armed .shape-radar svg > polygon[fill="none"],
+.surface-shape.intro-armed .shape-radar svg > line,
+.surface-shape.intro-armed .shape-radar svg > circle:not(.radar-vertex) {
+  opacity: 0;
+}
+.surface-shape.intro-armed .shape-radar svg .radar-polygon,
+.surface-shape.intro-armed .shape-radar svg .radar-polygon-double {
+  stroke-dashoffset: 100;
+  fill-opacity: 0;
+}
+.surface-shape.intro-armed .shape-radar svg .radar-vertex {
+  opacity: 0;
+}
+.surface-shape.intro-armed .shape-name {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .surface-shape.is-entering > .shape-panel-motif {
+    animation: shapeIntroFade 500ms ease-out both;
+  }
+  /* Grid rings + spokes + endpoint ticks fade together, 250ms after
+     the BG motif begins so the canvas establishes before the bones
+     of the radar appear. */
+  .surface-shape.is-entering .shape-radar svg > polygon[fill="none"],
+  .surface-shape.is-entering .shape-radar svg > line,
+  .surface-shape.is-entering .shape-radar svg > circle:not(.radar-vertex) {
+    animation: shapeIntroFade 550ms ease-out 250ms both;
+  }
+  /* Polygon stroke traces clockwise from the starting vertex. The
+     symmetric ease (cubic-bezier(.5,0,.5,1)) feels closer to "writing"
+     than a linear sweep. Long 1.2s duration gives the trace real
+     presence — the polygon's silhouette is the identity, so it earns
+     the time. The fill warms in 200ms before the stroke completes,
+     creating a sense of the shape "filling itself in." */
+  .surface-shape.is-entering .shape-radar svg .radar-polygon {
+    animation:
+      radarStrokeTrace 1200ms cubic-bezier(0.5, 0, 0.5, 1) 800ms both,
+      radarFillIn 450ms ease-out 1800ms both;
+  }
+  .surface-shape.is-entering .shape-radar svg .radar-polygon-double {
+    animation: radarStrokeTrace 1200ms cubic-bezier(0.5, 0, 0.5, 1) 800ms both;
+  }
+  /* Vertex stagger — each vertex fades in 85ms after its predecessor.
+     --i is set inline (0..7) by buildRadarSvg's vertex generator. */
+  .surface-shape.is-entering .shape-radar svg .radar-vertex {
+    animation: shapeIntroFade 200ms ease-out both;
+    animation-delay: calc(2100ms + (var(--i, 0) * 85ms));
+  }
+  /* Header name lifts in last so the radar establishes itself before
+     the identity text claims attention. */
+  .surface-shape.is-entering .shape-name {
+    animation: shapeIntroHeaderRise 400ms cubic-bezier(0.2, 0.8, 0.3, 1) 2500ms both;
+  }
+}
+
+/* Reduced-motion override: skip the intro entirely. The intro-armed
+   from-state is undone here so motion-sensitive users see fully
+   rendered elements with no flicker. */
+@media (prefers-reduced-motion: reduce) {
+  .surface-shape.intro-armed > .shape-panel-motif,
+  .surface-shape.intro-armed .shape-radar svg > polygon[fill="none"],
+  .surface-shape.intro-armed .shape-radar svg > line,
+  .surface-shape.intro-armed .shape-radar svg > circle:not(.radar-vertex),
+  .surface-shape.intro-armed .shape-radar svg .radar-vertex,
+  .surface-shape.intro-armed .shape-name {
+    opacity: 1;
+    transform: none;
+  }
+  .surface-shape.intro-armed .shape-radar svg .radar-polygon,
+  .surface-shape.intro-armed .shape-radar svg .radar-polygon-double {
+    stroke-dashoffset: 0;
+    fill-opacity: 1;
+  }
+}
+
+/* ── Per-family BG motif (canvas-owned idle motion, 2026-05) ───
+   Animation now lives in shape-canvas-painters.js — sakura petals,
+   sunbeams, god-rays, ink slashes, etc. all paint frame-by-frame on
+   the <canvas> mounted inside .shape-panel-motif. JS handles the
+   gates: animateBg toggle / prefers-reduced-motion / page-visibility
+   all map to mount/unmount or RAF pause/resume.
+
+   The CSS contract that survives:
+     --motif-opacity-mul — atmosphere intensity slider (0–1)
+   The previous per-family CSS keyframes and is-animating selectors
+   were removed when canvas took over. */
+
+.shape-panel-motif {
+  opacity: var(--motif-opacity-mul, 1);
+}
+
+@keyframes shapeIntroFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes radarStrokeTrace {
+  from { stroke-dashoffset: 100; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes radarFillIn {
+  from { fill-opacity: 0; }
+  to   { fill-opacity: 1; }
+}
+@keyframes shapeIntroHeaderRise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Radar ↔ legend sync: when a radar text label is hovered/active,
+   the corresponding row gets is-hovered. The reverse highlight on
+   the SVG side lives on a [data-axis-id].is-hovered selector inside
+   the radar via inline style toggling in sidepanel.js. */
+.shape-radar svg text[data-axis-id] {
+  cursor: pointer;
+  transition: fill 120ms ease;
+  font-weight: 600;
+}
+.shape-radar svg text[data-axis-id]:hover,
+.shape-radar svg text[data-axis-id].is-hovered {
+  fill: hsl(var(--arch-h), var(--arch-s), calc(var(--arch-l) + 12%)) !important;
+  font-weight: 700;
+}
+.axis-detail {
+  padding: 4px 4px 12px 4px;
+  margin-top: -4px;
+}
+.axis-detail-label {
+  color: var(--text-3);
+  font-size: 10.5px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.axis-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.axis-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  background: hsla(var(--arch-h), var(--arch-s), var(--arch-l), 0.12);
+  color: hsl(var(--arch-h), var(--arch-s), calc(var(--arch-l) + 12%));
+  border: 1px solid hsla(var(--arch-h), var(--arch-s), var(--arch-l), 0.30);
+  border-radius: 999px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.axis-empty {
+  color: var(--text-3);
+  font-style: italic;
+}
+/* G11-deep: contributing-shows list under each axis. Plain stacked
+   titles, indented slightly so they read as a list (not as more
+   chips like the tags above). */
+.axis-detail-shows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 2px;
+}
+.axis-show {
+  color: var(--text-2);
+  font-size: 11.5px;
+  line-height: 1.5;
+  padding: 1px 0;
+}
+.axis-show::before {
+  content: '·';
+  color: hsl(var(--arch-h), var(--arch-s), calc(var(--arch-l) + 8%));
+  margin-right: 6px;
+  font-weight: 700;
+}
+/* Spacing between the tags block and the shows block within one
+   expanded axis detail panel. */
+.axis-detail-tags + .axis-detail-label {
+  margin-top: 12px;
+}
+
+/* SANDBOX badge — replaces the YOUR TASTE SHAPE kicker when the dev
+   axis-sandbox toggle is on AND the radar is in dev-sandbox mode.
+   Bright orange to make mode confusion impossible. */
+.shape-kicker.is-dev-sandbox {
+  color: #ff8c28;
+  background: rgba(255, 140, 40, 0.12);
+  border: 1px solid rgba(255, 140, 40, 0.40);
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 1.2px;
+  opacity: 1;
+}
+
+/* Dev axis sandbox — collapsible details positioned between the
+   radar and the prose so slider input + radar response are visible
+   together. Renders only when surfaceSettings.devAxisSandbox is on. */
+.dev-sandbox {
+  margin: 4px 0 12px 0;
+  padding: 10px 12px;
+  background: rgba(255, 140, 40, 0.04);
+  border: 1px dashed rgba(255, 140, 40, 0.30);
+  border-radius: 8px;
+}
+.dev-sandbox[hidden] { display: none; }
+.dev-sandbox-head {
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #ff8c28;
+  user-select: none;
+  padding: 2px 0;
+}
+.dev-sandbox-head::-webkit-details-marker { display: none; }
+.dev-sandbox-title { font-weight: 700; }
+.dev-sandbox-hint {
+  text-transform: none;
+  letter-spacing: 0.2px;
+  font-size: 10.5px;
+  color: var(--text-3);
+  font-weight: 400;
+}
+.dev-sandbox-body {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dev-sandbox-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.dev-sandbox-preset-label {
+  font-size: 11px;
+  color: var(--text-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dev-sandbox-preset-label select {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 11px;
+}
+/* Native <option> renders via the OS dropdown surface, which on
+   Windows/Chrome defaults to light theme regardless of the page's
+   dark theme. Explicit styling here applies the dark-theme palette
+   to the options themselves so they're readable. */
+.dev-sandbox-preset-label select option {
+  background: #1a1a22;
+  color: var(--text);
+}
+.dev-sandbox-confidence-buttons {
+  display: inline-flex;
+  gap: 4px;
+}
+.dev-sandbox-confidence-buttons button,
+.dev-sandbox-reset {
+  padding: 3px 9px;
+  font-size: 10.5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-2);
+  cursor: pointer;
+}
+.dev-sandbox-confidence-buttons button:hover,
+.dev-sandbox-reset:hover { background: rgba(255, 255, 255, 0.10); }
+/* Active confidence tier — orange tint matches the dev-sandbox accent.
+   Toggled by applyConfidencePreset; cleared by resetDevSandbox. */
+.dev-sandbox-confidence-buttons button.is-active {
+  background: rgba(255, 140, 40, 0.18);
+  border-color: rgba(255, 140, 40, 0.55);
+  color: #ffb070;
+}
+.dev-sandbox-confidence-buttons button.is-active:hover {
+  background: rgba(255, 140, 40, 0.26);
+}
+.dev-sandbox-reset {
+  margin-left: auto;
+  border-color: rgba(255, 140, 40, 0.30);
+  color: #ff8c28;
+}
+.dev-sandbox-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dev-sandbox-row {
+  display: grid;
+  grid-template-columns: 1fr 90px 32px;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.dev-sandbox-row .dev-sandbox-label { color: var(--text-2); }
+.dev-sandbox-row input[type="range"] {
+  width: 100%;
+  accent-color: #ff8c28;
+}
+.dev-sandbox-row .dev-sandbox-value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text-3);
+  font-size: 10.5px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-dim);
+}
+
+.brand-name {
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
+
+.header-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.header-btn:hover {
+  background: var(--card);
+  color: var(--text);
+}
+
+/* Right-side action cluster in the header — keeps help "?" and the
+   refresh "↻" sitting flush together on the right edge rather than
+   getting floated apart by the .header's justify-content:space-between. */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Deep-link "?" icon — rewritten by sidepanel.js to point at the
+   help.html section matching the active surface (Picks or Shape). */
+.header-help-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.header-help-dot:hover {
+  background: var(--card);
+  color: var(--text);
+  border-color: var(--text-2);
+}
+
+/* 2026-05-15 night: switched from horizontal-scroll single-row layout
+   (G13-deep) to a 2-col × N-row grid. All lenses are visible at once
+   without scrolling, and the visibility-toggle overlay lets users hide
+   lenses they don't use to shrink the grid. The wrapper carries the
+   absolutely-positioned edit button + overlay. */
+.mode-bar-wrap {
+  position: relative;
+  /* Extra top padding makes room for the absolutely-positioned edit
+     button (.mode-bar-edit at top:4px) so it doesn't overlap the
+     first row of grid pills. ~32px of clear gutter above the grid so
+     the button has visible breathing room below it. */
+  padding: 32px 14px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.mode-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.mode-pill {
+  /* Grid cell fills its column naturally; min-width prevents long
+     labels from forcing the grid to expand beyond panel width. */
+  min-width: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: var(--text-2);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+/* Semantic group divider in the 2-col grid — spans both columns as a
+   thin horizontal line between groups (discovery / history). Inserted
+   by renderModeBar; aria-hidden because the boundary is visual only.
+   Margin gives breathing room without doubling the gap. */
+.mode-divider {
+  grid-column: 1 / -1;
+  height: 1px;
+  background: color-mix(in srgb, var(--border) 80%, transparent);
+  margin: 2px 4px;
+}
+
+/* Edit button — opens the visibility overlay. Sits in the bar
+   wrapper's top-right corner. Styled to match .header-btn (bordered,
+   filled background, readable text color) so it reads clearly as a
+   button against the dark panel — the original transparent + muted
+   --text-3 version disappeared into the background. */
+.mode-bar-edit {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 26px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 1px;
+  z-index: 2;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.mode-bar-edit:hover {
+  background: var(--card-hover, color-mix(in srgb, var(--text) 12%, transparent));
+  border-color: var(--text-2);
+  color: var(--text);
+}
+
+/* Visibility overlay — anchored near the edit button, lists every
+   lens with a checkbox. Click-outside dismisses. */
+.lens-visibility-overlay {
+  position: absolute;
+  top: 30px;
+  right: 6px;
+  z-index: 10;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lens-visibility-overlay-head {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  padding: 2px 6px 6px;
+}
+.lens-visibility-overlay label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+  border-radius: 4px;
+}
+.lens-visibility-overlay label:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text);
+}
+.lens-visibility-overlay input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+.lens-visibility-overlay-group {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  padding: 6px 6px 2px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.lens-visibility-overlay-group:first-of-type {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 2px;
+}
+
+.mode-pill:hover {
+  background: var(--card-hover);
+  color: var(--text);
+}
+
+.mode-pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+}
+
+.mode-pill.active .mode-hint {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.mode-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.mode-hint {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+/* ── Vibe chip row ────────────────────────────────────── */
+.vibe-bar {
+  padding: 10px 14px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.vibe-bar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+/* Collapse toggle — replaces the static .vibe-bar-label with a clickable
+   button. The chevron rotates 90° (▾ → ▸) when the bar is collapsed
+   (state lives on body.vibe-bar-collapsed for cross-section CSS reach
+   into .status-legend-row). */
+.vibe-bar-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+.vibe-bar-toggle-caret {
+  display: inline-block;
+  font-size: 14px;
+  color: var(--text-2);
+  transition: transform 0.15s;
+  width: 12px;
+  text-align: center;
+  line-height: 1;
+}
+body.vibe-bar-collapsed .vibe-bar-toggle-caret {
+  transform: rotate(-90deg);
+}
+
+/* Collapsed state: hide the search input, chip grid, and breadth hint.
+   Keep the header row visible so the user can re-expand. Tighten the
+   bar's bottom padding since there's no content below the header. */
+body.vibe-bar-collapsed .vibe-bar {
+  padding-bottom: 6px;
+}
+body.vibe-bar-collapsed .vibe-bar-head {
+  margin-bottom: 0;
+}
+body.vibe-bar-collapsed .vibe-search,
+body.vibe-bar-collapsed .vibe-chips,
+body.vibe-bar-collapsed .vibe-breadth-hint {
+  display: none;
+}
+
+/* Legend rows stay visible regardless of the vibe-bar collapse state —
+   the # / 0.9 explainer references the rank pills + scores on the
+   cards below, which are always there, so it shouldn't disappear just
+   because the user folded the vibe chips out of sight. */
+
+/* Breadth hint — surfaces when 4+ vibes are selected so users
+   understand the OR-semantics + weighted ranking. Subtle, sits
+   below the chip row. */
+.vibe-breadth-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-3);
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.vibe-bar-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: var(--text-3);
+}
+
+.vibe-bar-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vibe-count {
+  font-size: 10px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.vibe-count.full {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.vibe-clear {
+  font-family: inherit;
+  font-size: 10px;
+  background: none;
+  border: 0;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  visibility: hidden;
+  transition: color 0.12s;
+}
+
+.vibe-clear.shown { visibility: visible; }
+.vibe-clear:hover { color: var(--accent); }
+
+/* Search bar (2026-05-14): type to find vibes by user-word instead of
+   scanning the chip grid. Sits between .vibe-bar-head and .vibe-chips.
+   Dropdown is absolutely positioned so it overlays the chip grid below
+   instead of pushing it down. */
+.vibe-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: border-color 0.12s;
+}
+.vibe-search:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
+}
+.vibe-search-icon {
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1;
+}
+.vibe-search-input {
+  flex: 1;
+  font-family: inherit;
+  font-size: 12px;
+  background: none;
+  border: 0;
+  outline: none;
+  color: var(--text);
+  padding: 2px 0;
+}
+.vibe-search-input::placeholder {
+  color: var(--text-3);
+  font-style: italic;
+}
+.vibe-search-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px;
+}
+.vibe-search-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text);
+}
+.vibe-search-row:hover,
+.vibe-search-row.is-highlighted {
+  background: rgba(255, 161, 80, 0.12);
+}
+.vibe-search-row-word {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.vibe-search-row-sep {
+  color: var(--text-3);
+}
+.vibe-search-row-vibes {
+  color: var(--text-2);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vibe-search-row-vibes .selected-check {
+  color: var(--accent);
+  font-weight: 600;
+}
+.vibe-search-row.is-all-added {
+  opacity: 0.55;
+}
+.vibe-search-row-hint {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: lowercase;
+}
+.vibe-search-empty {
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--text-3);
+  font-style: italic;
+}
+.vibe-search-empty-suggest {
+  margin-top: 4px;
+  color: var(--text-2);
+  font-style: normal;
+}
+.vibe-search-empty-suggest button {
+  background: none;
+  border: 0;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.vibe-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.vibe-chip {
+  font-family: inherit;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 3px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.vibe-chip:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.vibe-chip.selected {
+  background: var(--accent);
+  color: #1a0e00;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+/* Brief pulse when a chip is newly selected via the search bar — gives
+   the user peripheral-vision confirmation that their typed word landed. */
+@keyframes vibe-chip-flash {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(255, 161, 80, 0.55); }
+  40%  { transform: scale(1.1);  box-shadow: 0 0 0 6px rgba(255, 161, 80, 0); }
+  100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(255, 161, 80, 0); }
+}
+.vibe-chip.flash {
+  animation: vibe-chip-flash 380ms ease-out;
+}
+
+/* Inline link inside the no-vibe-matches empty state */
+.link-inline {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--accent);
+}
+.link-inline:hover { color: #ff9d4d; }
+
+.status-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  padding: 6px 14px;
+  font-size: 11px;
+  color: var(--text-3);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* Top row of the status bar: count text on the left, view-mode
+   toggle on the right. The legend rows stack underneath as before. */
+.status-bar-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* View-mode segmented control. Sits on the right of .status-bar-row-top.
+   The three buttons share a single rounded border; the active button
+   gets the accent fill so the current mode is unambiguous. */
+.view-mode-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.view-mode-btn {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.view-mode-btn + .view-mode-btn {
+  border-left: 1px solid var(--border);
+}
+.view-mode-btn:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text-2);
+}
+.view-mode-btn.active {
+  background: var(--accent);
+  color: #000;
+}
+.view-mode-btn.active:hover {
+  background: var(--accent);
+  color: #000;
+}
+
+/* Legend toggle button — sits next to the view-mode toggle in the
+   status-bar's top row. Click reveals .status-legend-body (the stacked
+   explainer rows). Default-collapsed reclaims ~50px of vertical real
+   estate; state persists via localStorage so the choice sticks across
+   panel opens. Style mirrors view-mode-btn so it reads as a sibling
+   control. */
+.status-legend-toggle {
+  font-size: 11px;
+  font-weight: 700;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  color: var(--text-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+.status-legend-toggle:hover {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.status-legend-toggle[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--accent);
+}
+
+.status-legend-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+/* Stacked rank/score legend rows. Each row is a flex line so the gray
+   pill / orange number / "=" / explainer all align on a single baseline
+   even though the explainer can wrap on narrow widths. Pill and number
+   are miniaturized clones of .card-rank / .card-final-score so the
+   legend self-demonstrates. Lives inside .surface-picks → the Shape
+   view hides it implicitly via the surface-toggle's .hidden class. */
+.status-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  opacity: 0.85;
+}
+.status-legend-row .legend-rank {
+  font-size: 10px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--text) 65%, transparent);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  padding: 0 5px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.status-legend-row .legend-score {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  /* Match horizontal footprint of .legend-rank so the "=" lines up
+     vertically across the two rows. */
+  min-width: 24px;
+  text-align: center;
+}
+.status-legend-row .legend-eq {
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+.status-legend-row .legend-text {
+  /* Allow the explainer to wrap inside its row if the panel is narrow,
+     while the pill / "=" stay locked to the leading edge. */
+  min-width: 0;
+}
+
+.rec-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.rec-list::-webkit-scrollbar { width: 8px; }
+.rec-list::-webkit-scrollbar-track { background: var(--bg); }
+.rec-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.rec-list::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+
+.card {
+  display: flex;
+  gap: 12px;
+  background: linear-gradient(180deg,
+              color-mix(in srgb, var(--card) 100%, white 4%) 0%,
+              var(--card) 100%);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px;
+  margin-bottom: 10px;
+  transition: background 0.15s, border-color 0.15s, transform 0.14s ease-out,
+              box-shadow 0.14s ease-out;
+  position: relative;
+}
+
+/* Top-rank treatment — #1 in today's picks earns a faint accent border
+   + soft glow so the eye lands on it before everything else. Distinct
+   from the .card-rank chip styling (which lives inside .card-head) so
+   the visual anchor reads at two levels of zoom: card-level aura tells
+   "this is the pick" before you read the chip. */
+.card[data-rank="1"] {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent),
+              0 4px 18px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+/* Entrance animation for newly-added cards only. The diff-update path
+   (renderCard → list.appendChild on a fresh node) tags new entries
+   with .card-entering, removed via requestAnimationFrame next frame.
+   Existing cards that just MOVED position go through FLIP (inline
+   transform set by applyFlipAnimations) — they must not get the
+   entrance animation or the transform fights with FLIP and the card
+   visibly snaps. Pre-diff-update this animation was on .card and
+   ran on every render, which caused the flicker that motivated the
+   refactor. */
+.card-entering {
+  animation: crsmart-card-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.card:hover {
+  background: var(--card-hover);
+  border-color: #3a3a3a;
+  /* Subtle lift signals affordance — these cards link out, so the
+     hover should feel like the surface is rising toward the cursor. */
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+}
+
+@keyframes crsmart-card-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── View modes ─────────────────────────────────────────────────
+   Body class switches: .view-mode-detail (default, full card),
+   .view-mode-casual (drops tag chips + sub-scores + lens-why for
+   density), .view-mode-compact (single-row list with mini thumb).
+   Card DOM is identical across modes — CSS toggles visibility +
+   resizes — so the diff-update render path doesn't need to know
+   about view modes. Switching modes is purely a CSS class flip. */
+
+/* Casual: keep the cover, title, score, format/year, and the
+   because-line. Drop tag chips, sub-scores, lens-why. */
+body.view-mode-casual .card-tags,
+body.view-mode-casual .card-lens-why,
+body.view-mode-casual .card-details {
+  display: none;
+}
+body.view-mode-casual .card {
+  padding: 9px;
+}
+body.view-mode-casual .card-cover {
+  width: 72px;
+  height: 108px;
+}
+/* Casual: rationale show-name weight matches the title at 600 — demote
+   so the title wins the row. Italic + dim normalizes the line as
+   secondary context rather than competing nameplate text. */
+body.view-mode-casual .card-because b {
+  font-weight: 400;
+  color: var(--text-2);
+  font-style: italic;
+}
+
+/* Compact: cover thumbnail + title row + tight meta. Drop everything
+   below the title row (tags, lens-why, because, sub-scores). The
+   card stretches to a single line ~52px tall. */
+body.view-mode-compact .card-tags,
+body.view-mode-compact .card-lens-why,
+body.view-mode-compact .card-because,
+body.view-mode-compact .card-details {
+  display: none;
+}
+body.view-mode-compact .card {
+  padding: 7px 10px;
+  gap: 10px;
+  margin-bottom: 5px;
+  align-items: center;
+}
+body.view-mode-compact .card-cover {
+  width: 44px;
+  height: 66px;
+  border-radius: 4px;
+}
+body.view-mode-compact .card-body {
+  /* Reflow head + meta inline. card-head keeps the rank/title/score
+     trio; card-meta gets pushed to a thin secondary row but the
+     overall card stays one line via the smaller cover. */
+  gap: 2px;
+}
+body.view-mode-compact .card-meta {
+  font-size: 10px;
+}
+body.view-mode-compact .card-final-score {
+  font-size: 14px;
+}
+body.view-mode-compact .card-title {
+  font-size: 13.5px;
+  line-height: 1.3;
+}
+/* Compact: rank reads as a small inline prefix to the title rather than
+   a pill chip — at this density the pill competed with the title for
+   first-glance attention. Drop the chip background + border, keep the
+   text in muted gray so the title becomes the visual anchor. */
+body.view-mode-compact .card-head {
+  gap: 4px;
+}
+body.view-mode-compact .card-rank {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+/* Top-3 in compact: still differentiate by color, just no pill. */
+body.view-mode-compact .card-rank[data-rank-tier="top"] {
+  color: var(--accent);
+}
+
+.card-cover {
+  flex-shrink: 0;
+  width: 96px;
+  height: 144px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #2a2a2a;
+  display: block;
+  /* Inner ring + drop shadow lift the artwork off the flat dark card
+     surface so posters read as media objects rather than flat stickers.
+     Aspect-locked 2:3 portrait via fixed dimensions + object-fit cover. */
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+              0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.card-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.card-cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.72);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.18));
+  font-family: var(--font-headline, system-ui), sans-serif;
+}
+
+.card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.card-title {
+  /* Take remaining width between the leading rank chip and the trailing
+     final-score so the title stays left-aligned. Without flex:1 the
+     space-between layout drifts the title to dead-center in the
+     in-between gap, which reads as "centered title" on single-line
+     titles like Steins;Gate. */
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 14.5px;
+  line-height: 1.25;
+  letter-spacing: -0.005em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-title:hover {
+  color: var(--accent);
+}
+
+.card-final-score {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--accent);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.15s, text-shadow 0.15s;
+}
+/* Score color tiers — at-a-glance reading of "how strong is this pick"
+   without parsing the number. Set via data-tier on render/patch from
+   the displayed score: low (<0.75), mid (default), high (≥0.90). */
+.card-final-score[data-tier="low"] {
+  color: color-mix(in srgb, var(--accent) 50%, var(--text-3));
+}
+.card-final-score[data-tier="high"] {
+  color: color-mix(in srgb, var(--accent) 80%, white 20%);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.card-vibe-match {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  padding: 1px 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  align-self: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rank chip — primary visual signal that says "this is your #N pick
+   today" so the cards' displayed Smart Scores don't have to carry the
+   burden of explaining why order doesn't strictly descend. Sits at the
+   leading edge of .card-head, before the title. Muted ghost styling so
+   the rank reads as orientation, not decoration. */
+.card-rank {
+  font-size: 11px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--text) 65%, transparent);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  padding: 1px 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  align-self: center;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+/* Top-3 rank treatment — accent-tinted chip flags "your top picks today"
+   at a glance. Rest of the list stays muted ghost so the top-3 lift
+   visually without needing to read each number. Set via data-rank-tier
+   on render/patch when rank ∈ [1,3]. */
+.card-rank[data-rank-tier="top"] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+}
+
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 10.5px;
+  color: var(--text-3);
+  opacity: 0.85;
+}
+
+.card-meta > span:not(:empty) + span:not(:empty)::before {
+  content: '·';
+  margin-right: 8px;
+  color: var(--text-3);
+}
+
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.tag-chip {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: rgba(244, 117, 33, 0.12);
+  border: 1px solid rgba(244, 117, 33, 0.25);
+  border-radius: 10px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.tag-chip.weak {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border);
+  color: var(--text-2);
+}
+
+.card-because {
+  font-size: 11px;
+  color: var(--text-2);
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.card-because b {
+  color: var(--text);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.card-details {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.card-details summary {
+  cursor: pointer;
+  color: var(--text-3);
+  font-size: 11px;
+  outline: none;
+  user-select: none;
+}
+
+.card-details summary:hover {
+  color: var(--text-2);
+}
+
+.card-details[open] summary {
+  margin-bottom: 6px;
+  color: var(--text-2);
+}
+
+.sub-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 4px;
+}
+
+.sub-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 32px;
+  gap: 6px;
+  align-items: center;
+  font-size: 10px;
+  color: var(--text-2);
+}
+
+.sub-bar {
+  height: 4px;
+  background: #2a2a2a;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.sub-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.sub-fill[data-key="taste"] { background: #f47521; }
+.sub-fill[data-key="rec"] { background: #6aa9ff; }
+.sub-fill[data-key="qual"] { background: #4caf50; }
+
+.sub-val {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text-3);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-2);
+}
+
+.empty-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+  opacity: 0.4;
+}
+
+.empty-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.empty-hint {
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.5;
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+/* Lens-specific "why this rec?" line on rec cards. Renders above
+   the existing card-because line. Distinct accent color so it reads
+   as engine-voice (lens reasoning) vs. user-voice (because you
+   watched X). */
+.card-lens-why {
+  color: var(--accent);
+  font-size: 11.5px;
+  line-height: 1.4;
+  margin: 4px 0 2px;
+  padding: 3px 8px;
+  background: rgba(255, 140, 40, 0.08);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 4px 4px 0;
+  font-style: italic;
+}
+
+/* ── Low-signal banner ─────────────────────────────
+   When the user has too few rated/watched shows (<80) the radar
+   would be misleading at full opacity. Dim the radar and name
+   the situation explicitly with a banner below it. */
+.surface-shape.is-low-signal .shape-radar {
+  opacity: 0.55;
+  filter: saturate(0.7);
+}
+.shape-low-signal {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 14px 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.shape-low-signal[hidden] { display: none; }
+.shape-low-signal-title {
+  font-weight: 600;
+  color: var(--text, #f0f0f0);
+}
+.shape-low-signal-body {
+  color: var(--muted, #aaa);
+}
+.shape-low-signal-meter {
+  font-size: 11px;
+  color: var(--muted, #aaa);
+  font-variant-numeric: tabular-nums;
+}
+.shape-low-signal-meter:empty { display: none; }

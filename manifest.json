@@ -1,0 +1,79 @@
+{
+  "manifest_version": 3,
+  "name": "Bingeprint — Smart Scoring for Crunchyroll",
+  "version": "0.2.0",
+  "description": "Smart Score taste overlay for Crunchyroll — scores on series pages + taste-shape popup. Not affiliated with Crunchyroll.",
+  "homepage_url": "https://github.com/anitastic-pixel/Crunchyroll-Smart-Scoring",
+  "icons": {
+    "16":  "icon16.png",
+    "32":  "icon32.png",
+    "48":  "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": ["storage", "unlimitedStorage", "sidePanel"],
+  "host_permissions": [
+    "https://www.crunchyroll.com/*",
+    "https://graphql.anilist.co/*",
+    "https://github.com/*",
+    "https://release-assets.githubusercontent.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Smart Scoring",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16":  "icon16.png",
+      "32":  "icon32.png",
+      "48":  "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "survey.html",
+        "survey.js",
+        "survey.css",
+        "survey-anchors.js",
+        "survey-genre-anchors.js",
+        "images/covers/*"
+      ],
+      "matches": ["https://www.crunchyroll.com/*", "<all_urls>"]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.crunchyroll.com/*"],
+      "js": ["inject.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://www.crunchyroll.com/*"],
+      "js": ["bridge.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://www.crunchyroll.com/*"],
+      "js": ["topbar-buttons.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.crunchyroll.com/*"],
+      "js": ["tour.js"],
+      "css": ["tour.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.crunchyroll.com/*"],
+      "js": ["crsmart-probe.js", "phrase-map.js", "phrase-engine.js", "vibe-tags.js", "chip-tint.js", "chip-composer.js", "reaction-data.js", "content-card.js", "content-feedback.js", "content-cr-integration.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

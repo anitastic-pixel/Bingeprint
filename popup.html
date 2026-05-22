@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="popup.css" />
+  <title>Smart Scoring</title>
+</head>
+<body>
+  <div class="app">
+
+    <!-- ── Main page ─────────────────────────────────────── -->
+    <div class="page page-main" data-page="main">
+
+    <!-- Status header -->
+    <header class="header">
+      <div class="brand">
+        <span class="dot"></span>
+        <span class="brand-name">Smart Scoring</span>
+      </div>
+      <div class="status" id="status">
+        <span class="status-pill" id="status-pill">checking…</span>
+      </div>
+    </header>
+
+    <!-- Scrollable middle column -->
+    <div class="scroll">
+
+      <!-- Top-of-popup help affordance. Always visible (unlike the
+           start-here banner which only fires for cold-start users) so
+           any user — new or returning — can re-enter the explainer
+           with one click. The accent-colored left border + question
+           glyph make it scan as "intro hint" instead of an ordinary
+           section. Replaces the prior bottom-of-popup "How this works"
+           link which sat below every other section and rarely got
+           noticed. Opens help.html in a new tab so the popup state
+           isn't lost. -->
+      <a class="popup-help-card" id="popup-help-card"
+         href="help.html" target="_blank" rel="noopener"
+         aria-label="Open the help page in a new tab">
+        <span class="popup-help-glyph" aria-hidden="true">?</span>
+        <span class="popup-help-text">
+          <span class="popup-help-title">How this works</span>
+          <span class="popup-help-sub">A 30-second tour of every section, the engine, and your taste shape.</span>
+        </span>
+        <span class="popup-help-chev" aria-hidden="true">→</span>
+      </a>
+
+      <!-- 3-step funnel — same shape as the survey strip, surfaced
+           in the popup empty-state so the cold-start user sees the
+           full path from the popup, not just a "start here" CTA in
+           isolation. JS toggles is-done on each step from
+           welcome-progress + signal state. Hidden once any signal
+           lands (matches start-here-banner visibility). -->
+      <ol class="onboarding-funnel popup-funnel" aria-label="Setup progress" id="popup-funnel" hidden>
+        <li class="funnel-step is-active" data-step="welcome" id="popup-funnel-welcome">
+          <span class="funnel-dot"></span>
+          <span class="funnel-label">Welcome</span>
+        </li>
+        <li class="funnel-step" data-step="build" id="popup-funnel-build">
+          <span class="funnel-dot"></span>
+          <span class="funnel-label">Build taste</span>
+        </li>
+        <li class="funnel-step" data-step="picks" id="popup-funnel-picks">
+          <span class="funnel-dot"></span>
+          <span class="funnel-label">See your picks</span>
+        </li>
+      </ol>
+
+      <!-- Cold-start / re-engagement banner. Three modes (set by
+           popup.js's refreshStartHereBanner from welcome-progress
+           state):
+             - 'cold'      : never opened the welcome tab
+             - 'reengage'  : opened welcome but no progress signal in 24h+
+             - 'anilist-stuck' : chose AniList path but import never landed
+                                 (stuck for 5min+)
+           Mode flips the title/body/CTA text via JS; same chrome stays
+           put so the section doesn't re-layout between modes. -->
+      <section class="block start-here" id="start-here-banner" data-mode="cold" hidden>
+        <div class="start-here-title" id="start-here-title">Pick how to start</div>
+        <div class="start-here-body" id="start-here-body">
+          Smart Scoring needs a tiny bit of taste signal to recommend
+          well. Three minutes is plenty.
+        </div>
+        <div class="start-here-actions">
+          <button class="source-action start-here-btn" id="start-here-btn" type="button">
+            Start here
+          </button>
+          <!-- Secondary dismiss for the re-engage / anilist-stuck modes
+               so the user can mute the nudge. Hidden by default; JS
+               unhides for non-cold modes. Stores
+               welcomeReengageDismissedAt so we don't re-show within
+               48h. -->
+          <button class="link link-warn start-here-dismiss"
+                  id="start-here-dismiss" type="button" hidden>
+            not now
+          </button>
+        </div>
+      </section>
+
+      <!-- Top archetypes — engine-internal genre-archetype blend.
+           Distinct from the sidebar's "Taste Shape" view (which is
+           the 8-axis radar identity); this is the ranked archetype
+           list (comfort-isekai, mainstream-shounen, etc.) that the
+           cosine-sim scoring uses internally. -->
+      <section class="block archetypes">
+        <div class="block-label">what kind of viewer you are</div>
+        <ul class="archetype-list" id="archetype-list">
+          <!-- populated by popup.js from chrome.storage.local.archetypeBlend -->
+        </ul>
+        <div class="block-foot">
+          <span class="muted small" id="archetypes-foot">based on your CR history · </span>
+          <a class="link" href="help.html#shape" target="_blank" rel="noopener">explain this</a>
+        </div>
+        <!-- Survey reset row — visible only when surveyShapes or
+             surveyTagShapes have entries. Tap-to-confirm wipe so a
+             stray click can't nuke a long Quick Taste Check session. -->
+        <div class="archetypes-survey" id="archetypes-survey" hidden>
+          <span class="muted small" id="archetypes-survey-count">no survey signal</span>
+          <button class="link link-warn" id="archetypes-survey-clear" type="button" hidden>
+            clear my survey taps
+          </button>
+        </div>
+      </section>
+
+      <!-- Data-sync progress (AniList above CR per the user's request).
+           Only visible while a phase is in progress. populated from
+           anilistFetchProgress + crHistoryProgress storage keys. -->
+      <section class="block sync-progress" id="sync-progress" hidden>
+        <div class="progress-row" id="progress-anilist" hidden>
+          <div class="progress-label">
+            <span class="progress-title" id="progress-anilist-title">AniList</span>
+            <span class="progress-counts" id="progress-anilist-counts"></span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="progress-anilist-fill"></div></div>
+        </div>
+        <div class="progress-row" id="progress-crhistory" hidden>
+          <div class="progress-label">
+            <span class="progress-title" id="progress-crhistory-title">Crunchyroll history</span>
+            <span class="progress-counts" id="progress-crhistory-counts"></span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="progress-crhistory-fill"></div></div>
+        </div>
+      </section>
+
+      <!-- Profile completeness (collapsible) -->
+      <section class="block sources collapsible" data-key="sources">
+        <button class="block-head" type="button" aria-expanded="true">
+          <span class="block-label">profile completeness</span>
+          <span class="head-right">
+            <span class="completeness">
+              <span class="completeness-bar"><span class="completeness-fill" id="completeness-fill" style="width:0%"></span></span>
+              <span class="completeness-num" id="completeness-num">0%</span>
+            </span>
+            <span class="caret">▾</span>
+          </span>
+        </button>
+        <div class="block-body">
+          <!-- Reason line — explains what's contributing to the
+               percentage and what the next biggest lever is. Populated
+               by popup.js's refreshProfileCompleteness from
+               surveyShapes / external-status / watchShapes counts. -->
+          <p class="completeness-reason" id="completeness-reason"></p>
+          <ul class="source-list">
+            <li class="source connected has-subtitle" id="source-cr">
+              <span class="source-icon">✓</span>
+              <div class="source-content">
+                <div class="source-header-row">
+                  <span class="source-name">Crunchyroll history</span>
+                  <button class="source-refresh" id="source-cr-refresh"
+                          type="button" title="refresh from Crunchyroll now">↻</button>
+                </div>
+                <span class="source-subtitle">watch counts from CR · tags, studios &amp; staff from AniList</span>
+                <span class="source-meta" id="source-cr-meta">checking…</span>
+              </div>
+            </li>
+            <li class="source pending external-source" id="source-anilist" data-source="anilist">
+              <span class="source-icon">+</span>
+              <div class="source-content">
+                <span class="source-name">AniList</span>
+                <span class="source-subtitle" data-role="subtitle" hidden></span>
+                <div class="source-impact" data-role="impact" hidden></div>
+                <!-- Privacy reassurance: shown only while AniList is
+                     pending (not yet connected). Once linked, popup.js
+                     promotes the row to .connected which hides this
+                     via CSS. Per the Q13 wording rule: every claim
+                     here must be true of oauth-manager.js. -->
+                <div class="source-privacy" data-role="privacy">
+                  <span class="source-privacy-text">
+                    No sign-in — we read your <strong>public</strong> AniList
+                    list by username. Nothing stored but the name; remove any
+                    time. (Private list? Use the XML import below instead.)
+                  </span>
+                  <a href="help.html#privacy" target="_blank" rel="noopener" class="link source-privacy-link">
+                    more details
+                  </a>
+                </div>
+                <input type="text" class="source-username-input" data-role="username"
+                       placeholder="your AniList username (public list)"
+                       autocomplete="off" spellcheck="false" hidden />
+              </div>
+              <button class="source-action" data-action="connect">connect</button>
+              <div class="source-header-actions">
+                <button class="source-refresh" data-role="resync" type="button"
+                        title="re-fetch AniList list (incremental — already-known shows skip enrichment)"
+                        hidden>↻</button>
+                <button class="source-refresh source-signout" data-role="signout" type="button"
+                        title="disconnect AniList (sign out / switch account)"
+                        hidden>⏻</button>
+                <button class="source-impact-toggle" data-role="impact-toggle" hidden type="button"
+                        aria-label="Show what changed in the engine after this import"
+                        title="Show engine impact">▾</button>
+              </div>
+            </li>
+            <!-- MAL is demoted from cold-start visibility for alpha.
+                 Stays hidden until the user has linked MAL (then we
+                 unhide so they don't lose access to their import) or
+                 the popup is opened with ?dev=1. AniList covers the
+                 same shape for the audience that has a list. -->
+            <li class="source pending external-source" id="source-mal" data-source="mal" hidden>
+              <span class="source-icon">+</span>
+              <div class="source-content">
+                <span class="source-name">MAL</span>
+                <span class="source-subtitle" data-role="subtitle" hidden></span>
+                <div class="source-impact" data-role="impact" hidden></div>
+              </div>
+              <button class="source-action" data-action="connect">connect</button>
+              <div class="source-header-actions">
+                <button class="source-refresh" data-role="resync" type="button"
+                        title="re-fetch MAL list (incremental — already-known shows skip enrichment)"
+                        hidden>↻</button>
+                <button class="source-refresh source-signout" data-role="signout" type="button"
+                        title="disconnect MAL (sign out / switch account)"
+                        hidden>⏻</button>
+                <button class="source-impact-toggle" data-role="impact-toggle" hidden type="button"
+                        aria-label="Show what changed in the engine after this import"
+                        title="Show engine impact">▾</button>
+              </div>
+            </li>
+            <!-- MAL XML import — works without API approval. Lives here
+                 as a separate row (not gated by MAL OAuth being
+                 configured) so users blocked on apiconfig approval can
+                 still import their list via the manual export path.
+                 Once data is imported, the row gains a subtitle (stats),
+                 a clear button (delete imported entries), and an impact
+                 toggle (engine-state diff vs. before the import). -->
+            <li class="source pending" id="source-mal-xml">
+              <span class="source-icon">+</span>
+              <div class="source-content">
+                <span class="source-name">MAL / AniList list (XML)</span>
+                <span class="source-subtitle" data-role="subtitle" hidden></span>
+                <div class="source-impact" data-role="impact" hidden></div>
+              </div>
+              <button class="source-action" id="mal-xml-open-btn">import</button>
+              <div class="source-header-actions">
+                <button class="source-refresh source-signout" data-role="clear" type="button"
+                        title="delete imported MAL entries (taste vector recomputes after)"
+                        hidden>⏻</button>
+                <button class="source-impact-toggle" data-role="impact-toggle" hidden type="button"
+                        aria-label="Show what changed in the engine after this import"
+                        title="Show engine impact">▾</button>
+              </div>
+            </li>
+            <!-- =========================================================
+                 MVP-CUT (alpha deferral): Freeform-notes import — newest
+                 and least-proven import path (fuzzy-matches pasted prose
+                 against batched AL lookups; tip commit flagged a 5-site
+                 integration bug). Deferred for the alpha. The row below
+                 is wrapped in an HTML comment; not rendered.
+                 wireFreeformOpen() / renderFreeformRow() in popup.js
+                 null-guard on the missing #source-freeform /
+                 #freeform-open-btn, so no JS change is needed.
+                 import-freeform.html/js + freeform-*.js stay on disk.
+
+                 TO RESTORE: delete the open marker on the next line and
+                 the matching close marker + /MVP-CUT trailer below.
+                 (Original descriptive comment for this row was removed —
+                 HTML comments can't nest; see git history.)
+            ========================================================= -->
+            <!--
+            <li class="source pending" id="source-freeform">
+              <span class="source-icon">+</span>
+              <div class="source-content">
+                <span class="source-name">Your notes (text)</span>
+                <span class="source-subtitle" data-role="subtitle" hidden></span>
+                <div class="source-impact" data-role="impact" hidden></div>
+              </div>
+              <button class="source-action" id="freeform-open-btn">import</button>
+              <div class="source-header-actions">
+                <button class="source-refresh source-signout" data-role="clear" type="button"
+                        title="delete imported notes (taste vector recomputes after)"
+                        hidden>⏻</button>
+                <button class="source-impact-toggle" data-role="impact-toggle" hidden type="button"
+                        aria-label="Show what changed in the engine after this import"
+                        title="Show engine impact">▾</button>
+              </div>
+            </li>
+            -->
+            <!-- /MVP-CUT (Freeform-notes import) -->
+            <li class="source pending" id="source-survey">
+              <!-- The "?" icon doubles as a help deep-link to the
+                   Quick Taste Check explainer in help.html. Same
+                   visual treatment as the other source-icon entries
+                   so the row layout stays uniform; pointer cursor +
+                   hover state signal that it's clickable. Opens in
+                   a new tab so the popup state isn't lost. -->
+              <a class="source-icon source-icon-link" href="help.html#survey"
+                 target="_blank" rel="noopener"
+                 title="What's the Quick Taste Check?"
+                 aria-label="Learn what the Quick Taste Check does">?</a>
+              <span class="source-name">Quick taste check</span>
+              <button class="source-action" id="survey-open-btn">3 min</button>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Engine health (collapsible). Status-at-a-glance: when did
+           the engine last recompute, how many shows are scored, any
+           recent errors. Useful diagnostic for "is the engine actually
+           running?" without having to open the worker console. -->
+      <section class="block engine-health collapsible" data-key="engine-health">
+        <button class="block-head" type="button" aria-expanded="false">
+          <span class="block-label">engine status</span>
+          <span class="head-right">
+            <span class="muted small" id="engine-status-summary">checking…</span>
+            <span class="caret">▾</span>
+          </span>
+        </button>
+        <div class="block-body">
+          <div class="engine-grid" id="engine-grid">
+            <!-- Populated by popup.js. Rows: last recompute,
+                 schema, scored count, recent errors, rate-limit. -->
+          </div>
+          <div class="engine-foot muted small" id="engine-foot"></div>
+        </div>
+      </section>
+
+
+      <!-- Backup & restore — save user data (CR watch history, AniList
+           import, survey taps, settings) to a JSON file and restore on
+           another PC or after reinstalling. CR + AniList fetches take
+           real time; this is the escape hatch from re-running them.
+           Default-collapsed because it's a once-in-a-while action; the
+           header summary surfaces the gist when collapsed. -->
+      <section class="block backup-block collapsible collapsed" data-key="backup-restore">
+        <button class="block-head" type="button" aria-expanded="false">
+          <span class="block-label">backup &amp; restore</span>
+          <span class="head-right">
+            <span class="muted small" id="backup-summary">save / restore</span>
+            <span class="caret">▾</span>
+          </span>
+        </button>
+        <div class="block-body">
+          <p class="backup-intro">
+            Save your taste profile to a JSON file. Useful for moving to a
+            new PC, reinstalling, or insurance — refetching CR watch
+            history and AniList scores from scratch takes a while.
+          </p>
+
+          <!-- Save side -->
+          <div class="backup-section backup-section-save">
+            <div class="backup-section-head">
+              <span class="backup-section-title">Save</span>
+              <span class="backup-section-hint" id="backup-bucket-count">4 buckets</span>
+            </div>
+            <div class="backup-bucket-list">
+              <label class="backup-bucket">
+                <input type="checkbox" class="backup-bucket-cb" data-bucket="cr" checked />
+                <span class="backup-bucket-body">
+                  <span class="backup-bucket-name">CR data</span>
+                  <span class="backup-bucket-hint">watch history + per-show meta</span>
+                </span>
+              </label>
+              <label class="backup-bucket">
+                <input type="checkbox" class="backup-bucket-cb" data-bucket="anilist" checked />
+                <span class="backup-bucket-body">
+                  <span class="backup-bucket-name">AniList data</span>
+                  <span class="backup-bucket-hint">imported scores + linking state</span>
+                </span>
+              </label>
+              <!-- (Removed the "include sign-in credential" sub-toggle:
+                   AniList import is by public username now — there's no token
+                   to back up.) -->
+              <label class="backup-bucket">
+                <input type="checkbox" class="backup-bucket-cb" data-bucket="survey" checked />
+                <span class="backup-bucket-body">
+                  <span class="backup-bucket-name">Survey + reactions</span>
+                  <span class="backup-bucket-hint">Quick Taste Check, ratings, reactions</span>
+                </span>
+              </label>
+              <label class="backup-bucket">
+                <input type="checkbox" class="backup-bucket-cb" data-bucket="settings" checked />
+                <span class="backup-bucket-body">
+                  <span class="backup-bucket-name">Settings</span>
+                  <span class="backup-bucket-hint">dealbreakers, panel toggles, sliders</span>
+                </span>
+              </label>
+            </div>
+            <button class="backup-primary-btn" id="backup-export-btn" type="button">
+              Save backup
+            </button>
+            <div class="backup-status muted small" id="backup-export-status" aria-live="polite"></div>
+          </div>
+
+          <!-- Restore side -->
+          <div class="backup-section backup-section-restore">
+            <div class="backup-section-head">
+              <span class="backup-section-title">Restore</span>
+            </div>
+            <p class="backup-restore-desc">
+              Opens a page where you pick a backup file, preview what's in
+              it, and choose which buckets to restore. Existing data not
+              covered by the file stays as-is.
+            </p>
+            <button class="backup-secondary-btn" id="backup-import-btn" type="button">
+              Open restore page
+            </button>
+          </div>
+
+          <!-- Help footer -->
+          <a class="backup-help-link" href="help.html#backup" target="_blank" rel="noopener">
+            How backup &amp; restore works →
+          </a>
+        </div>
+      </section>
+
+
+      <!-- Recent picks (collapsible) -->
+      <section class="block picks collapsible" data-key="picks">
+        <button class="block-head" type="button" aria-expanded="true">
+          <span class="block-label">recent Smart Score picks</span>
+          <span class="head-right">
+            <span class="muted small">3</span>
+            <span class="caret">▾</span>
+          </span>
+        </button>
+        <div class="block-body">
+          <ul class="pick-list">
+            <li class="pick">
+              <span class="pick-tier safe">SAFE</span>
+              <span class="pick-name">Cyberpunk: Edgerunners</span>
+              <span class="pick-score">8.7</span>
+            </li>
+            <li class="pick">
+              <span class="pick-tier stretch">STRETCH</span>
+              <span class="pick-name">Berserk (1997)</span>
+              <span class="pick-score">7.8</span>
+            </li>
+            <li class="pick">
+              <span class="pick-tier trust">TRUST ME</span>
+              <span class="pick-name">Mushishi</span>
+              <span class="pick-score">9.1</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- (Bottom "How this works" link removed; the top-of-popup
+           popup-help-card now serves the same purpose with more
+           visibility for new users who never scrolled this far.) -->
+
+    </div>
+
+    <!-- Pinned action bar -->
+    <footer class="footer">
+      <button class="ask-btn">
+        <span class="ask-icon">💬</span>
+        <span class="ask-text">ask me about a show…</span>
+      </button>
+      <button class="settings-btn" id="open-settings" title="settings">⚙</button>
+    </footer>
+
+    </div><!-- /page-main -->
+
+    <!-- ── Settings page ─────────────────────────────────── -->
+    <div class="page page-settings hidden" data-page="settings">
+
+      <header class="page-header">
+        <button class="page-back" id="settings-back" title="back" aria-label="back">←</button>
+        <span class="page-title">Settings</span>
+        <span class="page-spacer"></span>
+      </header>
+
+      <div class="scroll">
+
+        <!-- Essentials — first-15-min surfaces only.
+             Anything cosmetic, advanced, or experimental lives in
+             the Advanced disclosure below. -->
+        <section class="block">
+          <div class="block-label">where Smart Picks shows up</div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-name">Side panel</div>
+              <div class="setting-desc">
+                Adds a sparkle button to Crunchyroll's top bar. Click it to open
+                the ranked Smart Picks list.
+              </div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="setting-side-panel" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-name">Series-page card</div>
+              <div class="setting-desc">
+                Drops a Smart Score card on each series page so you can see
+                why we'd (or wouldn't) recommend it before you click Watch.
+              </div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="setting-show-page-panel" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-name">Keep tour button on top bar</div>
+              <div class="setting-desc">
+                The tour button (★) auto-hides once you've watched the
+                onboarding tour. Turn this ON to pin it in Crunchyroll's
+                top bar so you can re-fire the tour any time.
+              </div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="setting-keep-tour-button" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-name">Show spoiler tags</div>
+              <div class="setting-desc">
+                Reveal AniList-flagged spoiler tags directly in the
+                rationale chips. Off by default — spoiler-tagged
+                contributors render as a 🔒 placeholder you can tap
+                to reveal per-chip. Turn on if you've already seen
+                most of your catalog.
+              </div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="setting-show-spoilers" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <!-- Dev: axis sandbox. Author tool — hidden from user view.
+               Reach via chrome-extension://<id>/popup.html?dev=1 -->
+          <div class="setting-row dev-only" hidden>
+            <div class="setting-info">
+              <div class="setting-name">Dev: axis sandbox</div>
+              <div class="setting-desc">
+                Adds a slider sandbox to the side panel's Shape view.
+                Tweak axis values + signal count to preview how the
+                radar / family palette / shape name / prose render
+                under any combination — no need to watch shows or
+                re-rate. Sandbox state is ephemeral to dev mode and
+                doesn't touch your real taste profile.
+              </div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="setting-dev-axis-sandbox" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
+        </section>
+
+        <!-- Advanced — single disclosure for extra (non-cosmetic) knobs.
+             For the MVP cut, the cosmetic sub-blocks below (cover-art
+             bleed, genre row toggle, card width, cinematic background,
+             taste shape animation, key-art image, gradient overlays)
+             are wrapped in an HTML comment so they're preserved on disk
+             but inactive. Dealbreakers + "Show me around again" + dev
+             toggles still live inside this block's body. -->
+        <section class="block collapsible collapsed" data-key="advanced">
+          <button class="block-head" type="button" aria-expanded="false">
+            <span class="block-label">Advanced</span>
+            <span class="head-right">
+              <span class="muted small">extra knobs</span>
+              <span class="caret">▾</span>
+            </span>
+          </button>
+          <div class="block-body">
+
+            <!-- =========================================================
+                 MVP-CUT (v0.2 deferral): cosmetic disclosures wrapped in
+                 an HTML comment below. Preserved on disk; not rendered.
+                 surface-settings keys fall back to defaults via
+                 getSurfaceSettings() so cards render unchanged.
+
+                 TO RESTORE: delete the HTML comment open marker on the
+                 next line, and the matching close marker plus the
+                 /MVP-CUT trailer that sit just before the dealbreakers
+                 section below. (The inner Phase 4 explanatory comment
+                 was removed in the same commit because HTML comments
+                 cannot nest; see git history for the original text.)
+            ========================================================= -->
+            <!--
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-name">Cover-art bleed</div>
+                <div class="setting-desc">
+                  Themed look — fades the show's cover art into the right edge
+                  of the Smart Score card. Off by default; the card stays
+                  translucent + blurred so it reads cleanly over CR's hero.
+                </div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="setting-cover-bleed" />
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-name">Genre row on cards</div>
+                <div class="setting-desc">
+                  Show a dedicated "Genre" row with the show's broad lane
+                  (Fantasy / Action / Drama). With it on, the "Why you're in"
+                  row focuses on differentiating tags (Magic, Tragedy, Battle).
+                  With it off, broad genres re-enter the signed rows.
+                </div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="setting-genre-row" />
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-name">
+                  Card width · <span id="card-width-value">820</span>px
+                </div>
+                <div class="setting-desc">
+                  How wide the Smart Score card stretches on series pages.
+                  Narrower reads more focused; wider fits more proof in one line.
+                </div>
+                <input type="range" id="setting-card-width"
+                       class="slider" min="640" max="1200" step="20" />
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-name">Cinematic background</div>
+                <div class="setting-desc">
+                  Locks the series key-art as a full-screen backdrop and fades
+                  it to black as you scroll into the episode list.
+                </div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="setting-hero-bg-lock" />
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+
+        <section class="block collapsible collapsed" data-key="taste-shape">
+          <button class="block-head" type="button" aria-expanded="false">
+            <span class="block-label">taste shape</span>
+            <span class="head-right"><span class="caret">▾</span></span>
+          </button>
+          <div class="block-body">
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-name">Animation tempo</div>
+                <div class="setting-desc">
+                  Controls both the intro stroke-trace on Shape-tab open and
+                  the continuous canvas wallpaper behind the radar. "Off"
+                  skips both; "Slow" suits long sessions; "Swift" snaps in
+                  for quick checks.
+                </div>
+                <div class="seg-control" id="setting-taste-shape-anim-tempo" role="radiogroup" aria-label="Animation tempo">
+                  <button type="button" class="seg" data-val="off">Off</button>
+                  <button type="button" class="seg" data-val="swift">Swift</button>
+                  <button type="button" class="seg" data-val="balanced">Balanced</button>
+                  <button type="button" class="seg" data-val="leisurely">Slow</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-name">Animated background</div>
+                <div class="setting-desc">
+                  Continuous canvas motion per family — sakura petals for
+                  Drama, sunbeams for Comfort, god-rays for Mystery, ink
+                  slashes for Auteur. Pauses automatically when the panel
+                  isn't visible; turn off if you'd rather skip the
+                  wallpaper entirely.
+                </div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="setting-taste-shape-animate-bg" />
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-name">
+                  Atmosphere intensity · <span id="taste-shape-bg-opacity-value">100</span>%
+                </div>
+                <div class="setting-desc">
+                  How loud the family wallpaper reads behind the radar.
+                  Lower values feel quieter; 0 hides the canvas entirely.
+                </div>
+                <input type="range" id="setting-taste-shape-bg-opacity"
+                       class="slider" min="0" max="100" step="5" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="block collapsible collapsed" data-key="hero-image">
+          <button class="block-head" type="button" aria-expanded="false">
+            <span class="block-label">key-art image</span>
+            <span class="head-right"><span class="caret">▾</span></span>
+          </button>
+          <div class="block-body">
+            <div class="setting-row" id="setting-hero-bg-scale-row">
+              <div class="setting-info">
+                <div class="setting-name">
+                  Image scale · <span id="hero-bg-scale-value">140</span>%
+                </div>
+                <div class="setting-desc">
+                  How zoomed-in the key-art is. Higher hides the edges so the
+                  image fills every corner; lower pulls back to show more of
+                  the artwork.
+                </div>
+                <input type="range" id="setting-hero-bg-scale"
+                       class="slider" min="100" max="220" step="5" />
+              </div>
+            </div>
+
+            <div class="setting-row" id="setting-hero-bg-offset-y-row">
+              <div class="setting-info">
+                <div class="setting-name">
+                  Image vertical offset · <span id="hero-bg-offset-y-value">0</span>vh
+                </div>
+                <div class="setting-desc">
+                  Nudges the image up or down on screen. Positive shifts it
+                  down (revealing more of the top of the artwork); negative
+                  shifts it up.
+                </div>
+                <input type="range" id="setting-hero-bg-offset-y"
+                       class="slider" min="-30" max="30" step="2" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="block collapsible collapsed" data-key="hero-own-gradient">
+          <button class="block-head" type="button" aria-expanded="false">
+            <span class="block-label">our gradient overlay</span>
+            <span class="head-right"><span class="caret">▾</span></span>
+          </button>
+          <div class="block-body">
+            <div class="setting-row" id="setting-hero-bg-size-row">
+              <div class="setting-info">
+                <div class="setting-name">
+                  Gradient coverage · <span id="hero-bg-size-value">80</span>vh
+                </div>
+                <div class="setting-desc">
+                  How much of the viewport the dark gradient covers at the top
+                  of the page. Larger values hide more of the key-art up front —
+                  useful when the bottom edge of the image is easy to spot.
+                </div>
+                <input type="range" id="setting-hero-bg-size"
+                       class="slider" min="40" max="140" step="5" />
+              </div>
+            </div>
+
+            <div class="setting-row" id="setting-hero-bg-blur-row">
+              <div class="setting-info">
+                <div class="setting-name">
+                  Edge blur · <span id="hero-bg-blur-value">16</span>px
+                </div>
+                <div class="setting-desc">
+                  Softens the gradient's own top edge so the transparent→black
+                  transition reads as diffuse. 0 = crisp edge; higher = dreamy
+                  feather.
+                </div>
+                <input type="range" id="setting-hero-bg-blur"
+                       class="slider" min="0" max="60" step="1" />
+              </div>
+            </div>
+
+            <div class="setting-row" id="setting-hero-bg-dark-row">
+              <div class="setting-info">
+                <div class="setting-name">
+                  Gradient darkness · <span id="hero-bg-dark-value">100</span>%
+                </div>
+                <div class="setting-desc">
+                  How dark the gradient gets at its bottom. 100 = fully black;
+                  lower values let the key-art tint through rather than disappear.
+                </div>
+                <input type="range" id="setting-hero-bg-dark"
+                       class="slider" min="0" max="100" step="5" />
+              </div>
+            </div>
+
+            <div class="setting-row" id="setting-hero-bg-mid-row">
+              <div class="setting-info">
+                <div class="setting-name">
+                  Mid-section opacity · <span id="hero-bg-mid-value">100</span>%
+                </div>
+                <div class="setting-desc">
+                  How opaque the middle of the gradient is. 100 = dark across
+                  most of its height; lower = darkness concentrated near the
+                  bottom edge, so the image shows through higher up.
+                </div>
+                <input type="range" id="setting-hero-bg-mid"
+                       class="slider" min="0" max="100" step="5" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="block collapsible collapsed" data-key="hero-cr-gradient">
+          <button class="block-head" type="button" aria-expanded="false">
+            <span class="block-label">Crunchyroll's native overlay</span>
+            <span class="head-right"><span class="caret">▾</span></span>
+          </button>
+          <div class="block-body">
+            <div class="setting-row" id="setting-hero-cr-overlay-row">
+              <div class="setting-info">
+                <div class="setting-name">
+                  Overall intensity · <span id="hero-cr-overlay-value">100</span>%
+                </div>
+                <div class="setting-desc">
+                  Master opacity for Crunchyroll's whole built-in overlay.
+                  100 = original strength; 0 = invisible so only our gradient
+                  does the work.
+                </div>
+                <input type="range" id="setting-hero-cr-overlay"
+                       class="slider" min="0" max="100" step="5" />
+              </div>
+            </div>
+
+            <div class="setting-row" id="setting-hero-cr-diagonal-row">
+              <div class="setting-info">
+                <div class="setting-name">
+                  Corner shadow · <span id="hero-cr-diagonal-value">100</span>%
+                </div>
+                <div class="setting-desc">
+                  Strength of Crunchyroll's diagonal top-left shadow. 100 =
+                  native; 0 = removes the corner darkening entirely.
+                </div>
+                <input type="range" id="setting-hero-cr-diagonal"
+                       class="slider" min="0" max="100" step="5" />
+              </div>
+            </div>
+
+            <div class="setting-row" id="setting-hero-cr-left-wash-row">
+              <div class="setting-info">
+                <div class="setting-name">
+                  Left-side wash · <span id="hero-cr-left-wash-value">100</span>%
+                </div>
+                <div class="setting-desc">
+                  Strength of the horizontal darkening behind the series title
+                  on the left. Lower values let the key-art show through the
+                  title area.
+                </div>
+                <input type="range" id="setting-hero-cr-left-wash"
+                       class="slider" min="0" max="100" step="5" />
+              </div>
+            </div>
+
+            <div class="setting-row" id="setting-hero-cr-bottom-fade-row">
+              <div class="setting-info">
+                <div class="setting-name">
+                  Bottom fade start · <span id="hero-cr-bottom-fade-value">45</span>%
+                </div>
+                <div class="setting-desc">
+                  Where Crunchyroll's bottom fade-to-black begins. Lower
+                  starts the fade higher up the image; higher pushes it down
+                  so more of the key-art stays visible.
+                </div>
+                <input type="range" id="setting-hero-cr-bottom-fade"
+                       class="slider" min="0" max="100" step="5" />
+              </div>
+            </div>
+
+            <div class="setting-row" id="setting-hero-cr-bottom-end-row">
+              <div class="setting-info">
+                <div class="setting-name">
+                  Bottom fade end · <span id="hero-cr-bottom-end-value">82</span>%
+                </div>
+                <div class="setting-desc">
+                  Where the bottom fade reaches full darkness. Higher
+                  compresses the fade into a thin band at the very bottom;
+                  lower spreads it across more of the image.
+                </div>
+                <input type="range" id="setting-hero-cr-bottom-end"
+                       class="slider" min="0" max="100" step="5" />
+              </div>
+            </div>
+
+            <div class="setting-row" id="setting-hero-cr-bottom-dark-row">
+              <div class="setting-info">
+                <div class="setting-name">
+                  Bottom darkness · <span id="hero-cr-bottom-dark-value">100</span>%
+                </div>
+                <div class="setting-desc">
+                  Max darkness at the bottom of Crunchyroll's fade. 100 =
+                  solid black; lower values let the key-art tint through even
+                  at the bottom edge.
+                </div>
+                <input type="range" id="setting-hero-cr-bottom-dark"
+                       class="slider" min="0" max="100" step="5" />
+              </div>
+            </div>
+          </div>
+        </section>
+            -->
+            <!-- /MVP-CUT (Advanced cosmetic disclosures) -->
+
+        <section class="block collapsible" data-key="dealbreakers">
+          <button class="block-head" type="button" aria-expanded="true">
+            <span class="block-label">dealbreakers</span>
+            <span class="head-right">
+              <span class="muted small" id="dealbreaker-summary">0</span>
+              <span class="caret">▾</span>
+            </span>
+          </button>
+          <div class="block-body">
+            <div class="setting-desc dealbreaker-intro">
+              Hard excludes — any show with one of these tags as a central
+              theme won't appear in your recs. Tap a suggested tag to treat
+              it as a dealbreaker; tap an active one to remove it.
+            </div>
+
+            <div class="dealbreaker-group" id="dealbreaker-active-group">
+              <div class="block-sublabel">Active</div>
+              <div class="dealbreaker-chips" id="dealbreaker-active"></div>
+            </div>
+
+            <div class="dealbreaker-group" id="dealbreaker-suggested-group">
+              <div class="block-sublabel">Suggested</div>
+              <div class="dealbreaker-chips" id="dealbreaker-suggested"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Re-fire the onboarding tour overlay (and replay coach marks).
+             The tour lives in CR's DOM — clicking this messages background.js
+             to find an open CR tab (or open one) and mount the overlay there. -->
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Show me around again</div>
+            <div class="setting-desc">
+              Re-fires the 5-slide onboarding tour over Crunchyroll
+              (the one you saw on install). Also re-arms one-time
+              coach marks (Picks tab, Shape tab, Smart Score card)
+              so they fire again the next time you open each surface.
+            </div>
+          </div>
+          <button class="source-action" id="reopen-welcome-btn" type="button">re-open</button>
+        </div>
+
+        <!-- Dev: keep onboarding visible. Author tool — hidden unless
+             popup opened with ?dev=1. Lives at the bottom of Advanced
+             so it doesn't compete with user-facing toggles. -->
+        <div class="setting-row dev-only" hidden>
+          <div class="setting-info">
+            <div class="setting-name">Dev: keep onboarding visible</div>
+            <div class="setting-desc">
+              Re-shows the survey "👋 New here?" banner and one-time
+              coach marks every load instead of remembering they were
+              dismissed. Doesn't touch your stored dismissal flags —
+              toggling off restores normal behavior. Used for QAing
+              the new-user experience without resetting storage.
+            </div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="setting-dev-keep-onboarding" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
+
+        <!-- Dev: CF re-ranker (ADR-0003 bounded ML exception). Default OFF.
+             When on, cf-engine.js loads ~1.3 MB of pre-trained embeddings
+             + tag projection and adds a bounded delta to the *internal
+             ranking score* (the displayed Smart Score on each card is
+             never touched). Open sidepanel.html?dev=1 to see the per-card
+             "CF Δ" pill on the side panel. Flipping this on triggers a
+             rec recompute on the next worker pass. -->
+        <div class="setting-row dev-only" hidden>
+          <div class="setting-info">
+            <div class="setting-name">Dev: CF re-ranker</div>
+            <div class="setting-desc">
+              Enables the collaborative-filtering re-ranker on rec list
+              order. Silent by default — reorders Smart Picks only;
+              never changes the displayed score. See
+              <code>docs/CF-RERANKER-DESIGN.md</code> for the design and
+              <code>docs/adr/0003-cf-reranker-ml-exception.md</code> for
+              the no-ML principle override that authorizes it.
+            </div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="setting-dev-cf-enabled" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
+
+        <!-- Dev: CF delta pills on side-panel cards. Audit affordance for
+             Phase D observation — shows "CF Δ+0.32 (cosine 0.221, corpus)"
+             on each rec so the user can see how CF re-ranked the list.
+             Separate from the cfEnabled engine flag: enabling pills
+             without enabling CF shows no pills (deltas are zero); enabling
+             CF without pills runs CF silently as designed. -->
+        <div class="setting-row dev-only" hidden>
+          <div class="setting-info">
+            <div class="setting-name">Dev: CF Δ pills (side panel)</div>
+            <div class="setting-desc">
+              Renders a per-card "CF Δ" indicator on the side panel
+              showing each rec's CF-engine contribution to the internal
+              ranking score. Audit-only; doesn't affect rec order.
+            </div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="setting-dev-cf-pills" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
+
+          </div><!-- /Advanced block-body -->
+        </section><!-- /Advanced -->
+
+        <section class="block dev-only" hidden>
+          <div class="block-label">validation (dev)</div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-name">Generate snapshot</div>
+              <div class="setting-desc">
+                Dump current engine state — top 30 / bottom 30 / per-archetype top-5
+                / curated case results — to a JSON file. Used to diff against a
+                committed baseline before merging tuning changes. See
+                <code>validation/README.md</code> in the repo for workflow.
+              </div>
+              <div class="muted small" id="validate-status" style="margin-top:4px"></div>
+            </div>
+            <button class="source-action" id="validate-snapshot-btn" type="button">snapshot</button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-name">Rebuild rec-pool from CR catalog</div>
+              <div class="setting-desc">
+                Enumerate Crunchyroll's full series catalog (~1,950) and resolve
+                new shows to AniList, then download the assembled
+                <code>rec-pool-by-cr-id.json</code> to commit. Long run
+                (~15 min) — watch the engine-status progress.
+              </div>
+              <div class="muted small" id="cr-catalog-status" style="margin-top:4px"></div>
+            </div>
+            <button class="source-action" id="cr-catalog-preview-btn" type="button">preview</button>
+            <button class="source-action" id="cr-catalog-btn" type="button">rebuild</button>
+          </div>
+        </section>
+
+      </div>
+    </div><!-- /page-settings -->
+
+  </div>
+  <script src="crsmart-probe.js"></script>
+  <script src="surface-settings.js"></script>
+  <script src="backup-schema.js"></script>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

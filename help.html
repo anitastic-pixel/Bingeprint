@@ -1,0 +1,1571 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>How Smart Scoring works</title>
+  <link rel="stylesheet" href="help.css">
+</head>
+<body>
+  <main class="help">
+
+    <a id="top" tabindex="-1" class="help-anchor"></a>
+    <header class="help-header">
+      <span class="help-kicker">Smart Scoring</span>
+      <h1 class="help-title">How this works</h1>
+      <p class="help-sub">
+        Two ways to read this: <strong>Start here</strong> gets you
+        running in about five minutes; <strong>How it works</strong>
+        explains how the engine thinks, one section at a time. Sections
+        are independent — dip in as needed, skip the rest.
+      </p>
+      <p class="help-pitch">
+        Smart Scoring is a private, local recommender built around
+        <em>your</em> taste — not what's trending. Where Crunchyroll's
+        rec row shows what's popular with the broader audience,
+        Smart Score asks "is this for <em>you</em>?" and shows the
+        reasoning. Nothing ever leaves your browser.
+      </p>
+      <nav class="help-toc" aria-label="On this page">
+        <span class="help-toc-label">Start here</span>
+        <a href="#getting-started">Getting started</a>
+        <span class="help-toc-label">How it works</span>
+        <a href="#smart-score">Smart Score card</a>
+        <a href="#picks">Smart Picks side panel</a>
+        <a href="#shape">Your Taste Shape</a>
+        <!-- MVP-CUT (v0.2): TOC links for reactions, vibes, dealbreakers,
+             faq, and glossary stay commented out alongside their sections.
+             The shape link was restored when the sidepanel Shape tab
+             got a deep-link "?" icon pointing at help.html#shape. -->
+        <a href="#survey">Quick Taste Check</a>
+        <a href="#anilist">AniList &amp; MAL imports</a>
+        <!--
+        <a href="#reactions">Reactions</a>
+        <a href="#vibes">Vibes</a>
+        <a href="#dealbreakers">Dealbreakers</a>
+        -->
+        <span class="help-toc-label">Good to know</span>
+        <a href="#privacy">Privacy</a>
+        <a href="#backup">Backup &amp; restore</a>
+        <a href="#troubleshooting">Troubleshooting</a>
+        <a href="#faq">FAQ</a>
+        <a href="#reference">Reference &amp; glossary</a>
+      </nav>
+    </header>
+
+    <section id="getting-started" class="help-section">
+      <h2>Getting started — the first 5 minutes</h2>
+      <p>
+        Three things will get you usable picks fast. Do them in any order;
+        each one strengthens the engine on its own.
+      </p>
+      <ol class="help-numbered">
+        <li>
+          <strong>Take the Quick Taste Check.</strong> Click the toolbar
+          icon → "Quick taste check." Tap loved/skipped on shows you
+          recognize. ~30 taps is enough to get the engine off zero.
+        </li>
+        <li>
+          <strong>Connect AniList or MAL (optional).</strong> If you keep a
+          list on either, your scores there are richer signal than the
+          survey alone. Toolbar icon → "Profile completeness" → connect.
+        </li>
+        <li>
+          <strong>Just browse Crunchyroll.</strong> Open any series page —
+          you'll see your first Smart Score card. Open the side panel
+          (sparkle ✦ in CR's top bar) for ranked picks.
+        </li>
+      </ol>
+      <p>
+        The engine sharpens as data lands. First ~30 watched/rated shows,
+        treat scores as directional. By ~80 the radar shape is honest and
+        recommendations stabilize.
+      </p>
+
+      <h3 class="help-subhead">Where things live</h3>
+      <figure class="help-visual">
+        <div class="mock-anatomy">
+          <div class="anatomy-card">
+            <div class="anatomy-art anatomy-art-toolbar">
+              <span class="anatomy-toolbar-icon">✦</span>
+              <div class="anatomy-toolbar-menu">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+            <div class="anatomy-label">Toolbar icon → popup</div>
+            <div class="anatomy-desc">Quick taste check, AniList connect, settings.</div>
+          </div>
+          <div class="anatomy-card">
+            <div class="anatomy-art anatomy-art-bar">
+              <span class="anatomy-cr-logo">crunchyroll</span>
+              <span class="anatomy-cr-spacer"></span>
+              <span class="anatomy-sparkle">✦</span>
+            </div>
+            <div class="anatomy-label">Sparkle in CR top bar</div>
+            <div class="anatomy-desc">Click to open the Smart Picks side panel.</div>
+          </div>
+          <div class="anatomy-card">
+            <div class="anatomy-art anatomy-art-card">
+              <span class="anatomy-card-ring">92</span>
+              <div class="anatomy-card-lines">
+                <span class="anatomy-card-tier">TRUST ME</span>
+                <span></span><span></span>
+              </div>
+            </div>
+            <div class="anatomy-label">In-page Smart Score card</div>
+            <div class="anatomy-desc">Drops on every CR series page with score, tier, why.</div>
+          </div>
+          <div class="anatomy-card">
+            <div class="anatomy-art anatomy-art-panel">
+              <div class="anatomy-panel-tabs">
+                <span class="anatomy-panel-tab active">Picks</span>
+                <span class="anatomy-panel-tab">Shape</span>
+              </div>
+              <div class="anatomy-panel-rows">
+                <div class="anatomy-panel-row">
+                  <span class="anatomy-panel-rank">1</span>
+                  <span class="anatomy-panel-title"></span>
+                  <span class="anatomy-panel-score">91</span>
+                </div>
+                <div class="anatomy-panel-row">
+                  <span class="anatomy-panel-rank">2</span>
+                  <span class="anatomy-panel-title"></span>
+                  <span class="anatomy-panel-score">88</span>
+                </div>
+              </div>
+            </div>
+            <div class="anatomy-label">Side panel</div>
+            <div class="anatomy-desc">Ranked picks (Peak / Comfort) plus the taste-shape radar.</div>
+          </div>
+        </div>
+        <figcaption>Four surfaces — toolbar popup, sparkle entry, in-page card, side panel.</figcaption>
+      </figure>
+    </section>
+
+    <section id="smart-score" class="help-section">
+      <h2>The Smart Score card</h2>
+      <p>
+        On every Crunchyroll series page, Smart Scoring drops a card
+        that tells you whether the show is for you. The big number is
+        the <strong>Smart Score</strong> — a percentage match against
+        your taste, where 100 = "this is your kind of show" and 0 =
+        "really not."
+      </p>
+
+      <figure class="help-visual">
+        <div class="mock-card">
+          <div class="mock-card-ring">
+            <svg viewBox="0 0 64 64" aria-hidden="true">
+              <circle cx="32" cy="32" r="28" class="mock-ring-bg"/>
+              <circle cx="32" cy="32" r="28" class="mock-ring-fill"
+                      stroke-dasharray="176" stroke-dashoffset="32"/>
+            </svg>
+            <span class="mock-card-score">92</span>
+          </div>
+          <div class="mock-card-body">
+            <span class="mock-tier mock-tier-trust">TRUST ME</span>
+            <span class="mock-card-title">Frieren: Beyond Journey's End</span>
+            <div class="mock-card-chips">
+              <span class="mock-chip mock-chip-pos">+ Slice-of-life fantasy</span>
+              <span class="mock-chip mock-chip-pos">+ Madhouse track record</span>
+              <span class="mock-chip mock-chip-pos">+ Reflective tone</span>
+            </div>
+          </div>
+        </div>
+        <figcaption>The card on a series page. Score, tier, and why.</figcaption>
+      </figure>
+
+      <p>
+        The score gets a tier label so you don't have to memorize
+        what counts as a high number. Each tier has its own color
+        on the card:
+      </p>
+      <div class="tier-row">
+        <span class="mock-tier mock-tier-trust">TRUST ME</span>
+        <span class="mock-tier mock-tier-worth">WORTH A SHOT</span>
+        <span class="mock-tier mock-tier-stretch">STRETCH</span>
+        <span class="mock-tier mock-tier-probably">PROBABLY NOT</span>
+        <span class="mock-tier mock-tier-skip">SKIP</span>
+      </div>
+      <ul class="tier-list">
+        <li><span class="tier-name tier-name-trust">TRUST ME</span> — strong match (≥9.0). Watch tonight, no second-guessing.</li>
+        <li><span class="tier-name tier-name-worth">WORTH A SHOT</span> — solid pick (7.5+). Add to your queue.</li>
+        <li><span class="tier-name tier-name-stretch">STRETCH</span> — outside your comfort but earned it (5.5+). A weekend project — you might love it once you commit.</li>
+        <li><span class="tier-name tier-name-probably">PROBABLY NOT</span> — skeptical (3.5+). Don't lead with this; only if a friend insists.</li>
+        <li><span class="tier-name tier-name-skip">SKIP</span> — confident no. Trust this once you have ~80 shows of signal.</li>
+      </ul>
+      <p>
+        Below the score sit a few chips — short, plain-language reasons,
+        not a tag dump:
+      </p>
+      <ul>
+        <li><strong>What's pulling for it</strong> — signals nudging the
+          show toward your taste (<em>Slice-of-life pacing</em>,
+          <em>Found-family beats</em>, <em>Spellcasting</em>).</li>
+        <li><strong>What might bug you</strong> — patterns you've
+          consistently dropped (<em>Power-up formula</em>,
+          <em>Heavy fanservice</em>, <em>Glacial pacing</em>), so you
+          know what you're walking into.</li>
+      </ul>
+      <p>
+        The wording is a friend-voice layer over the raw AniList tag
+        ("Politics" → "Throne-room scheming"). Hover any chip to see the
+        exact tag that fired. Studio and creator chips ("Madhouse track
+        record") are coming in a later pass.
+      </p>
+      <p class="help-callout">
+        <strong>Heads up if you just installed:</strong> for the first
+        ~30 watched/rated shows, treat scores as directional. The
+        engine sharpens as it learns you — by ~80 it's honest enough
+        to trust a SKIP.
+      </p>
+
+      <h3 class="help-subhead">Other badges you might see on the card</h3>
+      <p>
+        Beside the tier, the card surfaces small status chips that
+        explain <em>why</em> a show has the standing it does. They
+        don't all fire every time — most cards have one or two.
+      </p>
+
+      <div class="badge-grid">
+        <div class="badge-row">
+          <span class="mock-badge badge-favorite">★ FAVORITE</span>
+          <span class="badge-desc">You marked this with the heart on Crunchyroll. Strongest "I love this" signal CR offers.</span>
+        </div>
+        <div class="badge-row">
+          <span class="mock-badge badge-watchlist">ON WATCHLIST</span>
+          <span class="badge-desc">You've saved this to your CR watchlist — explicit "I want to watch this" intent.</span>
+        </div>
+        <div class="badge-row">
+          <span class="mock-badge badge-rewatched">REWATCHED</span>
+          <span class="badge-desc">You've gone back through this. Costly explicit signal — the engine boosts taste match for shows like it.</span>
+        </div>
+        <div class="badge-row">
+          <span class="mock-badge badge-rewatched">★ YOUR FAVORITE</span>
+          <span class="badge-desc">You watched ≥90% AND came back. Top-tier verified favorite; the engine treats this as a peak personal pick.</span>
+        </div>
+        <div class="badge-row">
+          <span class="mock-badge badge-cr-pick">CR PICKS · #7</span>
+          <span class="badge-desc">Crunchyroll's own engine ranks this high for you. When their model and ours agree, that's a higher-confidence pick.</span>
+        </div>
+        <div class="badge-row">
+          <span class="mock-badge badge-audience">CR FAVORITE</span>
+          <span class="badge-desc">Crunchyroll's audience rates this notably higher than the broader AniList community.</span>
+        </div>
+        <div class="badge-row">
+          <span class="mock-badge badge-audience">CRITICS' PICK</span>
+          <span class="badge-desc">The AniList community rates this notably higher than CR's audience — often a niche-resonance / critics' favorite.</span>
+        </div>
+        <div class="badge-row">
+          <span class="mock-badge badge-pedigree">PEAK PEDIGREE</span>
+          <span class="badge-desc">Director + studio track record in the top quartile of your watched corpus. Craft pedigree is unusually high.</span>
+        </div>
+        <div class="badge-row">
+          <span class="mock-badge badge-rushed">ENDS IN A HURRY</span>
+          <span class="badge-desc">Common rushed-adaptation shape — short ep count, no confirmed sequel. Pacing tends to crumple here.</span>
+        </div>
+        <div class="badge-row">
+          <span class="mock-badge badge-early">EARLY GUESS</span>
+          <span class="badge-desc">Scored on your taste + this show's quality only — no community-recommendation signal yet. Tier is honest but a notch less confident.</span>
+        </div>
+        <div class="badge-row">
+          <span class="mock-badge badge-low">LOW CONFIDENCE</span>
+          <span class="badge-desc">Thinner data backing the score: limited tags, sparse cross-source ratings. Could swing more than usual.</span>
+        </div>
+        <div class="badge-row">
+          <span class="mock-badge badge-dealbreaker">DEALBREAKER · isekai</span>
+          <span class="badge-desc">A tag you've blocked is central to this show. Surfaces only if you've set dealbreakers (Settings → Advanced).</span>
+        </div>
+      </div>
+
+      <details class="help-details">
+        <summary>How the Smart Score is computed (technical)</summary>
+        <div class="help-details-body">
+          <p>
+            The score is a weighted blend of normalized sub-scores plus a
+            creator-affinity additive lift. The exact mix depends on
+            whether the show is in your recommendation pool — a series
+            page often shows a title that isn't, so the card swaps
+            AniList's community-rec signal for a Crunchyroll-collaborative
+            one:
+          </p>
+          <pre class="help-code">Ranked Smart Picks (rec pool):
+  finalScore = 0.55·tasteN + 0.30·recN + 0.15·qualN + lift
+
+On-page card (show outside the rec pool):
+  finalScore = 0.50·tasteN + 0.35·qualN + 0.15·crCF + lift
+  (or 0.55·tasteN + 0.45·qualN + lift when there's no
+   Crunchyroll-collaborative signal — the EARLY GUESS case)
+
+  lift = max(0, creatorN − 0.5) · 0.10</pre>
+          <ul class="help-axis-list">
+            <li><strong>tasteN</strong> — your <em>Taste Vector</em>'s dot product with the show's tag profile. Roughly: how well the show's AniList tags align with the tag-mass you've accumulated from shows you liked.</li>
+            <li><strong>recN</strong> — community-recommendation signal (ranked picks only). People who liked shows like this also liked <em>X</em>, so <em>X</em> is more likely a fit. Comes from AniList's recommendation graph.</li>
+            <li><strong>crCF</strong> — Crunchyroll-collaborative signal (on-page card only). Where this show sits in Crunchyroll's own personalized list for you; shows CR doesn't rank resolve to a neutral 0.5 rather than a penalty.</li>
+            <li><strong>qualN</strong> — AniList community average score / 100. The "is this generally well-regarded?" floor.</li>
+            <li><strong>creatorN</strong> — affinity to the production team (studio + director + composer + character designer + series composition + original creator). Applied as an additive lift only when the team scores above the midpoint of your trusted teams; unknown teams default to neutral 0.5 with no penalty.</li>
+          </ul>
+          <p>
+            Then <strong>edge-anchored calibration</strong>: the raw
+            blend gets remapped so the user's top 5% of scores reaches
+            ≥0.90 and the bottom 5% reaches ≤0.35. Without this, raw
+            distributions cluster mid-range and tier bands stay empty
+            — every user always has TRUST ME and SKIP picks in their
+            pocket.
+          </p>
+          <p>
+            Tier thresholds: ≥0.90 TRUST ME · ≥0.75 WORTH A SHOT ·
+            ≥0.55 STRETCH · ≥0.35 PROBABLY NOT · &lt;0.35 SKIP.
+          </p>
+          <p class="help-source-note">
+            Source of truth:
+            <code>per-show-score.js</code> (taste cosine),
+            <code>rank-recommendations.js</code> (rec-pool blend weights),
+            <code>all-shows-scoring.js</code> (on-page card blend weights),
+            <code>score-blender.js</code> (shared lift + clamp),
+            <code>score-normalizer.js</code> (calibration),
+            <code>studio-creator-index.js</code> (creator affinity).
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <section id="picks" class="help-section">
+      <h2>The Smart Picks side panel</h2>
+      <p>
+        Click the sparkle button in Crunchyroll's top bar (or the
+        toolbar icon → "Open side panel") to see your ranked Smart
+        Picks. This is the engine's best guesses for what to watch
+        next.
+      </p>
+
+      <figure class="help-visual">
+        <div class="mock-panel">
+          <div class="mock-panel-tabs">
+            <span class="mock-tab active">Picks</span>
+            <span class="mock-tab">Shape</span>
+          </div>
+          <div class="mock-panel-modes">
+            <span class="mock-mode active">Peak</span>
+            <span class="mock-mode">Comfort</span>
+          </div>
+          <ul class="mock-panel-list">
+            <li class="mock-panel-pick">
+              <span class="mock-pick-rank">1</span>
+              <span class="mock-pick-title">Mushishi</span>
+              <span class="mock-pick-score">91</span>
+            </li>
+            <li class="mock-panel-pick">
+              <span class="mock-pick-rank">2</span>
+              <span class="mock-pick-title">Vinland Saga</span>
+              <span class="mock-pick-score">88</span>
+            </li>
+            <li class="mock-panel-pick">
+              <span class="mock-pick-rank">3</span>
+              <span class="mock-pick-title">Cyberpunk: Edgerunners</span>
+              <span class="mock-pick-score">86</span>
+            </li>
+          </ul>
+        </div>
+        <figcaption>Two tabs (Picks / Shape) and two lenses (Peak / Comfort).</figcaption>
+      </figure>
+
+      <p>
+        Eight lenses live here — each is a different cut of "what to
+        watch next":
+      </p>
+      <ul>
+        <li><strong>Peak</strong> — elevated, ambitious picks. Things to lean into.</li>
+        <li><strong>Comfort</strong> — easier rewatch-y picks. Brain-off mode.</li>
+        <li><strong>In the Air</strong> — currently-airing shows in your wheelhouse.</li>
+        <li><strong>People You Trust</strong> — picks by studios and creators you've consistently loved.</li>
+        <li><strong>Take a Chance</strong> — stretch picks outside your usual lanes.</li>
+        <li><strong>You've Missed</strong> — high-quality classics you haven't watched yet.</li>
+        <li><strong>Try Again</strong> — shows you dropped where current taste-fit suggests another shot.</li>
+        <li><strong>Rewatched</strong> — shows you came back to: your personal-canon comfort picks, surfaced as their own lens.</li>
+      </ul>
+      <p>
+        Each card shows the score, the tier, and a one-line reason
+        for the rec. Click a card to open that show on Crunchyroll.
+      </p>
+
+      <p>
+        Each card carries two distinct signals you can read at a glance:
+      </p>
+      <ul>
+        <li>
+          <strong>Rank chip (#1, #2, #3, …)</strong> — your position
+          in this lens <em>today</em>. Answers "why is this card
+          here?" The list is curated for you, not just sorted by raw
+          score.
+        </li>
+        <li>
+          <strong>Score number (top-right)</strong> — the engine's
+          honest rating of the show in general, independent of how
+          it stacks against your other picks. Same show, same score,
+          everywhere it appears.
+        </li>
+      </ul>
+      <p>
+        Because they answer different questions, they can diverge: a
+        show can be your <strong>#1 today</strong> with a lower score
+        than #2's, since the ranking weighs your taste shape, recent
+        history, and any vibes. The rank is for <em>you today</em>; the
+        score is for the <em>show, always</em>.
+      </p>
+
+      <h3 class="help-subhead">Vibe today — mood filter</h3>
+      <p>
+        Above the picks list there's a "Vibe today" row of mood tags
+        (chill, hype, slow-burn, atmospheric, bittersweet, and so on).
+        Tap a few to narrow the list to shows that fit the mood — without
+        changing your underlying taste profile. Clear to see the
+        unfiltered ranking again.
+      </p>
+      <p>
+        When vibes are selected, each card gets a small
+        <strong>N/M vibes</strong> badge (how many of your picks it
+        fires), and the list reorders so the strongest matches rise.
+        Pick more vibes and a show needs more of them to qualify —
+        roughly a third of your selection, rounded up.
+      </p>
+
+      <details class="help-details">
+        <summary>How vibe matching works (technical)</summary>
+        <div class="help-details-body">
+          <p>
+            Each vibe chip is a small bundle of AniList tag patterns
+            — for example, <em>melancholic</em> maps roughly to
+            Tragedy + Drama + Depression + Loss. Vibes don't touch
+            your Taste Vector or the underlying scores; they're a
+            <em>display-time filter</em>.
+          </p>
+          <p>
+            For every candidate, the filter scores how many selected
+            vibes fire and how strongly each one fires (using
+            AniList's per-tag rank, 0–100). Tag fires below rank 50
+            are dropped as noise — without this floor, a Tragedy tag
+            ranked 30 on a battle-shounen would fire both
+            <em>bittersweet</em> and <em>melancholic</em>, inflating
+            its match count. Canonical genre fires (Action, Romance,
+            etc.) always count. The matched set is sorted by
+            <strong>weighted strength → match count → finalScore</strong>,
+            so a show firing three vibes hard outranks one firing four
+            weakly, and quality only breaks ties among similar-vibe
+            cards.
+          </p>
+          <p>
+            A scaled minimum keeps big selections from spraying:
+            <code>ceil(selected / 3)</code> vibes must fire before a
+            show appears. Picking 2 vibes lets a 1-match through;
+            picking 8 vibes demands at least 3. The threshold stays
+            generous so narrow-but-strong matches (3 vibes firing
+            hard on a contemplative show) survive instead of getting
+            cut for not hitting half-of-eight.
+          </p>
+          <p class="help-source-note">
+            Source of truth:
+            <code>vibe-tags.js</code> (chip definitions and pattern map,
+            <code>vibeMatchDetail</code> for per-rec scoring),
+            <code>sidepanel.js</code>'s <code>render()</code> for the
+            filter and sort.
+          </p>
+        </div>
+      </details>
+
+      <details class="help-details">
+        <summary>How Peak vs Comfort differ (technical)</summary>
+        <div class="help-details-body">
+          <p>
+            Peak and Comfort aren't UI sorts — they're separate
+            <strong>Taste Vectors</strong> built from different
+            slices of your watch history.
+          </p>
+          <p>
+            The split happens at AniList community average score:
+          </p>
+          <pre class="help-code">peak    → only shows with averageScore ≥ 75 contribute
+comfort → only shows with averageScore &lt; 75 contribute</pre>
+          <p>
+            That means each lens learns from a different version of
+            you. Your Peak vector reflects taste in shows the
+            broader anime audience considers strong; your Comfort
+            vector reflects what you reach for outside of those
+            critically-validated picks. The same final-score formula
+            runs against each, so a show can rank high on Peak and
+            low on Comfort (or vice versa) depending on which slice
+            of your library it best matches.
+          </p>
+          <p>
+            After scoring, the candidate list runs through a
+            <em>diversifier</em> that prevents same-archetype
+            clumping — without it, a strong shounen-action lean
+            would fill the top 10 with near-identical recs.
+          </p>
+          <p class="help-source-note">
+            Source of truth:
+            <code>taste-vector.js</code> (peak/comfort split at line 104),
+            <code>diversify-recs.js</code>,
+            <code>lens-pipeline.js</code>.
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <section id="shape" class="help-section">
+      <h2>Your Taste Shape</h2>
+      <p>
+        Switch to the "Shape" tab in the side panel to see your taste
+        as a shape — a radar with eight axes. The longer the spike,
+        the more you gravitate toward that thing.
+      </p>
+
+      <figure class="help-visual">
+        <svg class="mock-radar" viewBox="0 0 400 300" aria-hidden="true">
+          <polygon class="mock-radar-ring" points="200,50 270.7,79.3 300,150 270.7,220.7 200,250 129.3,220.7 100,150 129.3,79.3"/>
+          <polygon class="mock-radar-ring" points="200,84 246.7,103.3 266,150 246.7,196.7 200,216 153.3,196.7 134,150 153.3,103.3"/>
+          <polygon class="mock-radar-ring" points="200,117 223.3,127.3 233,150 223.3,172.7 200,183 176.7,172.7 167,150 176.7,127.3"/>
+
+          <line class="mock-radar-spoke" x1="200" y1="150" x2="200" y2="50"/>
+          <line class="mock-radar-spoke" x1="200" y1="150" x2="270.7" y2="79.3"/>
+          <line class="mock-radar-spoke" x1="200" y1="150" x2="300" y2="150"/>
+          <line class="mock-radar-spoke" x1="200" y1="150" x2="270.7" y2="220.7"/>
+          <line class="mock-radar-spoke" x1="200" y1="150" x2="200" y2="250"/>
+          <line class="mock-radar-spoke" x1="200" y1="150" x2="129.3" y2="220.7"/>
+          <line class="mock-radar-spoke" x1="200" y1="150" x2="100" y2="150"/>
+          <line class="mock-radar-spoke" x1="200" y1="150" x2="129.3" y2="79.3"/>
+
+          <polygon class="mock-radar-fill"
+                   points="200,58 260.1,89.9 262,150 238.9,188.9 200,190 154,196 170,150 144.9,94.9"/>
+
+          <circle class="mock-radar-vertex" cx="200" cy="58"  r="3"/>
+          <circle class="mock-radar-vertex" cx="260" cy="90"  r="3"/>
+          <circle class="mock-radar-vertex" cx="262" cy="150" r="3"/>
+          <circle class="mock-radar-vertex" cx="239" cy="189" r="3"/>
+          <circle class="mock-radar-vertex" cx="200" cy="190" r="3"/>
+          <circle class="mock-radar-vertex" cx="154" cy="196" r="3"/>
+          <circle class="mock-radar-vertex" cx="170" cy="150" r="3"/>
+          <circle class="mock-radar-vertex" cx="145" cy="95"  r="3"/>
+
+          <text x="200" y="30" text-anchor="middle" class="mock-radar-label">
+            <tspan x="200" dy="-0.4em">Spectacle</tspan>
+            <tspan x="200" dy="1.1em">Drive</tspan>
+          </text>
+          <text x="280" y="72" text-anchor="start" class="mock-radar-label">
+            <tspan x="280" dy="-0.4em">Narrative</tspan>
+            <tspan x="280" dy="1.1em">Depth</tspan>
+          </text>
+          <text x="310" y="152" text-anchor="start" class="mock-radar-label">
+            <tspan x="310" dy="-0.4em">Character</tspan>
+            <tspan x="310" dy="1.1em">Attachment</tspan>
+          </text>
+          <text x="280" y="232" text-anchor="start" class="mock-radar-label">
+            <tspan x="280" dy="-0.4em">Emotional</tspan>
+            <tspan x="280" dy="1.1em">Intensity</tspan>
+          </text>
+          <text x="200" y="272" text-anchor="middle" class="mock-radar-label">
+            <tspan x="200" dy="-0.4em">Comfort</tspan>
+            <tspan x="200" dy="1.1em">Seeking</tspan>
+          </text>
+          <text x="120" y="232" text-anchor="end" class="mock-radar-label">
+            <tspan x="120" dy="-0.4em">Comedy / Chaos</tspan>
+            <tspan x="120" dy="1.1em">Appetite</tspan>
+          </text>
+          <text x="90" y="152" text-anchor="end" class="mock-radar-label">
+            <tspan x="90" dy="-0.4em">Romance &amp;</tspan>
+            <tspan x="90" dy="1.1em">Spice</tspan>
+          </text>
+          <text x="120" y="72" text-anchor="end" class="mock-radar-label">
+            <tspan x="120" dy="-0.4em">Curiosity</tspan>
+            <tspan x="120" dy="1.1em">Streak</tspan>
+          </text>
+        </svg>
+        <figcaption>An example taste shape — long Spectacle Drive / Narrative Depth / Curiosity Streak, short Romance &amp; Spice.</figcaption>
+      </figure>
+
+      <p>
+        The shape needs about 80 watched/rated shows before it's
+        confident — until then we dim it and label it
+        "Still learning your taste." Trust the strongest 2-3 spikes
+        first; mid-rank axes are noisy at low signal.
+      </p>
+
+      <details class="help-details">
+        <summary>How it's actually built (technical)</summary>
+        <div class="help-details-body">
+          <p>
+            Every show you watch, rate, react to, or tap in the survey
+            produces a <strong>Sentiment</strong> for that show — a
+            single signed number with a confidence weight (e.g.
+            <code>{ signal: +0.72, confidence: 0.85 }</code>). Watch
+            shape, reactions, ratings, watchlist intent, and external
+            list scores all fold into that one number per show.
+          </p>
+          <p>
+            Each show carries a list of AniList tags. We multiply each
+            tag's mass by the show's sentiment and accumulate across
+            your whole library — that gives a single
+            <strong>tag mass</strong> map: tag → how much you've
+            invested in shows with that tag. Negative for tags
+            associated with shows you dropped or rated low.
+          </p>
+          <p>
+            The eight radar axes are hand-curated tag bundles. For
+            example, <em>Spectacle Drive</em> is:
+          </p>
+          <pre class="help-code">Spectacle = Action·1.0 + Battle·1.0 + Fight Scenes·1.5
+          + Tournament·1.2 + Super Power·1.0
+          + Martial Arts·1.0 + Mecha·0.8 + Magic·0.6
+          + Sword Fighting·1.0 + Gun Action·1.0 + Chase·0.8</pre>
+          <p>
+            Each axis's raw value is the sum, across that axis's tags,
+            of <code>(your tag mass) × (axis tag weight)</code>, only
+            counting positive mass. The eight raw values are then
+            normalized against the largest one so the strongest axis
+            anchors the outer ring at 1.0 and the others scale in
+            proportion. That's why two users with very different
+            absolute volumes can have legible radars on the same
+            visual scale.
+          </p>
+          <p>
+            <strong>Confidence bands</strong>: the engine tracks a
+            <code>signalSeriesCount</code> (completed + in-progress
+            shows). Zero = <em>cold</em> (placeholder skeleton);
+            below 8 = <em>thin</em> (caveat pill); ≥8 internally
+            counts as <em>calibrated</em>. The Shape tab applies a
+            stricter visual rule and dims the radar below ~80, since
+            mid-rank axes get noisy at low signal even when the engine
+            considers itself calibrated.
+          </p>
+          <p>
+            The eight axes:
+          </p>
+          <ul class="help-axis-list">
+            <li><strong>Spectacle Drive</strong> — animation, action, visual energy</li>
+            <li><strong>Narrative Depth</strong> — story structure, lore, mystery</li>
+            <li><strong>Character Attachment</strong> — arcs, relationships, ensembles</li>
+            <li><strong>Emotional Intensity</strong> — drama, tragedy, dark themes</li>
+            <li><strong>Comfort Seeking</strong> — slice of life, healing, low stakes</li>
+            <li><strong>Comedy / Chaos Appetite</strong> — gags, absurdism, chaotic pacing</li>
+            <li><strong>Romance &amp; Spice</strong> — chemistry, intimacy, ecchi tolerance</li>
+            <li><strong>Curiosity Streak</strong> — auteur, prestige, niche, exploratory</li>
+          </ul>
+          <p class="help-source-note">
+            Source of truth: <code>radar-derive.js</code> in the
+            extension. Tag bundles + axis weights live in
+            <code>AXIS_DEFS</code>; sentiment aggregation lives in the
+            taste-vector pipeline.
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <section id="survey" class="help-section">
+      <h2>The Quick Taste Check</h2>
+      <p>
+        The 3-minute onboarding survey. Tap shows you've loved or
+        skipped — that's it. The engine learns enough from 30 taps to
+        give you usable recs.
+      </p>
+
+      <figure class="help-visual">
+        <div class="mock-survey">
+          <div class="mock-survey-tile mock-tile-loved">
+            <span class="mock-tile-thumb"></span>
+            <span class="mock-tile-name">Frieren</span>
+            <span class="mock-tile-tag">♥ loved</span>
+          </div>
+          <div class="mock-survey-tile">
+            <span class="mock-tile-thumb"></span>
+            <span class="mock-tile-name">Bleach</span>
+            <span class="mock-tile-tag">tap to react</span>
+          </div>
+          <div class="mock-survey-tile mock-tile-disliked">
+            <span class="mock-tile-thumb"></span>
+            <span class="mock-tile-name">Sword Art Online</span>
+            <span class="mock-tile-tag">✕ skipped</span>
+          </div>
+          <div class="mock-survey-tile">
+            <span class="mock-tile-thumb"></span>
+            <span class="mock-tile-name">Mushishi</span>
+            <span class="mock-tile-tag">tap to react</span>
+          </div>
+        </div>
+        <figcaption>Tap loved or skipped — leave the rest blank.</figcaption>
+      </figure>
+
+      <p>
+        You can come back to it any time from the popup ("Quick taste
+        check"). Your taps persist across sessions; you only "lose"
+        them if you explicitly clear them.
+      </p>
+
+      <details class="help-details">
+        <summary>How taps fold into the engine (technical)</summary>
+        <div class="help-details-body">
+          <p>
+            There are two kinds of taps. <strong>Show taps</strong>
+            (loved/skipped on a show tile) emit a per-series Sentiment
+            contribution at moderate confidence — lower than a watched
+            show, higher than nothing — so a real watch overrides a tap
+            naturally as soon as it lands. <strong>Tag taps</strong>
+            (loved/skipped on a tag chip) instead set a <em>floor</em>
+            (loved) or <em>ceiling</em> (skipped) on that tag's mass in
+            your Taste Vector, pinned to 0.6× of your strongest tag —
+            "competitive but not dominant": enough to register as a real
+            preference without overpowering what you've actually watched.
+          </p>
+          <p>
+            Because it's a floor rather than an additive bump, a tag tap
+            short-circuits the show-aggregation step — handy for
+            cold-starters who haven't watched anything on Crunchyroll
+            yet. It also degrades gracefully: if your watched-show mass
+            on that tag already clears the floor, the tap changes nothing
+            (the survey screen calls this "noop — behavior stronger").
+            Floors are computed against your <em>Peak</em> vector, so a
+            thin profile with no peak signal can't override yet.
+          </p>
+          <p>
+            Taps persist in <code>chrome.storage.local.surveyShapes</code>
+            and <code>surveyTagShapes</code>. The engine recomputes 2
+            seconds after the most recent tap, so the success screen's
+            top-3 picks are computed against your fresh taps.
+          </p>
+          <p class="help-source-note">
+            Source of truth:
+            <code>survey-state.js</code> (tap persistence),
+            <code>stated-preference.js</code> (floor/ceiling override,
+            <code>FLOOR_FRACTION = 0.6</code>),
+            <code>apply-flow.js</code> (apply pipeline).
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <section id="anilist" class="help-section">
+      <h2>AniList &amp; MAL imports</h2>
+      <p class="help-callout">
+        <strong>Don't recognize the names?</strong>
+        <a href="https://anilist.co" target="_blank" rel="noopener">AniList</a>
+        and <a href="https://myanimelist.net" target="_blank" rel="noopener">MyAnimeList</a>
+        are anime-tracking sites where users score every show they've
+        watched. If you don't keep a list on either, skip this whole
+        section — Crunchyroll watch history + the Quick Taste Check is
+        plenty.
+      </p>
+      <p>
+        If you keep a list on AniList (or MyAnimeList), connecting it
+        gives the engine a much richer picture than the survey alone —
+        actual scores on hundreds of shows, not just a few dozen taps.
+      </p>
+      <p>
+        From the popup → "Profile completeness," enter your AniList
+        <strong>username</strong> (your list must be public) — the import
+        runs automatically, no sign-in. Remove it any time from the same row.
+        Private list? Use the <strong>MAL / AniList list (XML)</strong> import
+        instead — export your AniList list to MAL-format XML with a converter
+        and drop it in.
+      </p>
+      <p>
+        See <a href="#privacy">Privacy</a> for what we read. No login, no
+        token — AniList import is just your public list.
+      </p>
+
+      <details class="help-details">
+        <summary>How list data folds into the engine (technical)</summary>
+        <div class="help-details-body">
+          <p>
+            Each list entry produces a <strong>Sentiment</strong>
+            contribution. The score-to-signal mapping uses a fixed
+            pivot at 7:
+          </p>
+          <pre class="help-code">signal = clamp((score − 7) / 3, −1, +1)</pre>
+          <p>
+            7 sits at the AL/MAL population median — most users score
+            things they liked enough to track, so a 7 is "ambient
+            average," not a positive endorsement. A score of 10 maps
+            to +1.0; a 4 maps to −1.0; a 7 is neutral.
+          </p>
+          <p>
+            <strong>Status modulates confidence</strong>:
+          </p>
+          <pre class="help-code">completed       → confidence 0.60
+dropped         → confidence 0.55
+watching/paused → confidence 0.40
+planning        → skipped (no signal)</pre>
+          <p>
+            If a status exists without a score, status alone
+            contributes (completed: +0.20 / 0.40, dropped: −0.40 /
+            0.50). Every import confidence sits well below what an
+            in-app Crunchyroll rating carries (~0.95+), so any rating
+            you give on CR naturally overrides an imported score on the
+            same show.
+          </p>
+          <p>
+            AniList import reads your <strong>public</strong> list by
+            username via <code>graphql.anilist.co</code> — no login, no token
+            stored. MAL (or AniList) data can also come from an XML export
+            file you upload. Either way, no credentials are kept.
+          </p>
+          <p class="help-source-note">
+            Source of truth:
+            <code>external-list-importer.js</code> (import pipeline),
+            <code>anilist.js</code> (public list fetch by username),
+            CONTEXT.md "External score" mapping rules.
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <!-- MVP-CUT (v0.2): reactions + vibes + dealbreakers help sections
+         commented out. All three features are discoverable from the
+         live UI (chip palette, vibe filter pills, dealbreaker chips in
+         popup). To restore, delete this preamble, the HTML comment
+         open marker on the next line, and the matching close marker
+         + /MVP-CUT trailer just before the privacy section. -->
+    <!--
+    <section id="reactions" class="help-section">
+      <h2>Reactions</h2>
+      <p>
+        On each Smart Score card you can tag specific reactions to a
+        show — "the music carried it," "the pacing dragged," "art saved
+        a weak story." Reactions tune the engine: a "music carried it"
+        on three shows tells us that's a real axis for you, and lifts
+        future picks that share it.
+      </p>
+
+      <figure class="help-visual">
+        <div class="mock-reactions">
+          <span class="mock-react mock-react-pos">♪ music carried it</span>
+          <span class="mock-react mock-react-pos">art saved a weak story</span>
+          <span class="mock-react mock-react-pos">stuck the landing</span>
+          <span class="mock-react mock-react-neg">pacing dragged</span>
+          <span class="mock-react mock-react-neg">filler bloat</span>
+        </div>
+        <figcaption>Pick a few that fit the show. Positive lifts, negative dampens.</figcaption>
+      </figure>
+
+      <p>
+        Reactions aren't required. Watch and rate is plenty signal on
+        its own.
+      </p>
+
+      <details class="help-details">
+        <summary>How reactions tune the engine (technical)</summary>
+        <div class="help-details-body">
+          <p>
+            The reaction palette has roughly 310 curated entries
+            organized into six "residue" groups: <em>tone, plot, art,
+            character, music, world</em>. Each entry has a polarity
+            (+/−), a weight (typically ±0.15 to ±0.40), and a list of
+            keywords that target specific tags.
+          </p>
+          <p>
+            When you tag a reaction on a show, two things happen:
+          </p>
+          <ul class="help-axis-list">
+            <li>The show's <strong>Sentiment</strong> shifts by the
+              reaction's weight — "the music carried it" pushes the
+              show up; "pacing dragged" pulls it down. Multiple
+              reactions stack additively, so a tearjerker with both
+              "music carried it" and "pacing dragged" partially
+              cancel.</li>
+            <li>The reaction's keywords get tag-mass added to your
+              <strong>Taste Vector</strong>. So tagging "music carried
+              it" on three shows builds up "Music" as a real axis for
+              you, and future shows tagged with Music get a boost.</li>
+          </ul>
+          <p>
+            Reactions live alongside (not instead of) ratings. The
+            engine treats them as a refinement signal — they tell us
+            <em>why</em> a show worked or didn't, beyond "you liked
+            it." A 5-star rating with no reactions is plenty of
+            signal; reactions just sharpen which axis the engine
+            credits.
+          </p>
+          <p class="help-source-note">
+            Source of truth:
+            <code>reactions.js</code> (palette + polarities),
+            <code>feedback-overlay.js</code> (UI),
+            <code>per-show-score.js</code> (sentiment fold-in).
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <section id="vibes" class="help-section">
+      <h2>Vibes (mood-of-the-day filter)</h2>
+      <p>
+        Above the Smart Picks list there's a "Vibe today" row. Pick a
+        couple of mood tags ("low-key," "tearjerker," "stylish") and
+        the picks list filters to shows matching that vibe — without
+        changing your underlying taste profile. Clear the vibes to
+        see the unfiltered ranking again.
+      </p>
+
+      <figure class="help-visual">
+        <div class="mock-vibes">
+          <span class="mock-vibe-label">vibe today:</span>
+          <span class="mock-vibe-chip active">low-key</span>
+          <span class="mock-vibe-chip active">tearjerker</span>
+          <span class="mock-vibe-chip">stylish</span>
+          <span class="mock-vibe-chip">funny</span>
+          <span class="mock-vibe-chip">existential</span>
+        </div>
+        <figcaption>Two vibes selected — Picks list filters to matches.</figcaption>
+      </figure>
+
+      <details class="help-details">
+        <summary>How vibe matching works (technical)</summary>
+        <div class="help-details-body">
+          <p>
+            Each vibe chip is a small bundle of AniList tags with
+            relative weights — for example, <em>tearjerker</em> maps
+            roughly to Tragedy + Drama + Found Family + Death +
+            Coming-of-Age. When you select a vibe, every candidate's
+            top tags are scored against the vibe's tag set; matches
+            float to the top of the list, non-matches dim.
+          </p>
+          <p>
+            Crucially, vibes don't change your underlying
+            <strong>Taste Vector</strong> or any of the score
+            components — they're a <em>display-time filter</em>.
+            Picking "tearjerker" today and "stylish" tomorrow doesn't
+            train the engine that you want either; it just reorders
+            the same ranked list.
+          </p>
+          <p>
+            Multiple vibes stack additively: more vibes selected =
+            more shows match at least one = looser filter. The
+            counter at the top of the chip row shows how many shows
+            in the current list match.
+          </p>
+          <p class="help-source-note">
+            Source of truth:
+            <code>vibe-tags.js</code> (chip definitions and tag
+            mappings), <code>sidepanel.js</code>'s
+            <code>scoreVibeMatch</code> (per-card match scoring).
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <section id="dealbreakers" class="help-section">
+      <h2>Dealbreakers</h2>
+      <p>
+        Tags you never want recommended, no matter what. Found under
+        Settings → Advanced → Dealbreakers. Tap a suggested tag to
+        block it; tap an active dealbreaker to remove it.
+      </p>
+
+      <figure class="help-visual">
+        <div class="mock-dealbreakers">
+          <div class="mock-dealbreakers-row">
+            <span class="mock-dealbreakers-head">Active</span>
+            <span class="mock-db-chip mock-db-active">harem ✕</span>
+            <span class="mock-db-chip mock-db-active">ecchi ✕</span>
+          </div>
+          <div class="mock-dealbreakers-row">
+            <span class="mock-dealbreakers-head">Suggested</span>
+            <span class="mock-db-chip">isekai +</span>
+            <span class="mock-db-chip">tournament arc +</span>
+            <span class="mock-db-chip">slow burn +</span>
+          </div>
+        </div>
+        <figcaption>Active = blocked. Tap suggested to add; tap active to remove.</figcaption>
+      </figure>
+
+      <p>
+        Dealbreakers fire only when a tag is a <em>central</em> theme
+        of a show, not a one-off mention.
+      </p>
+
+      <details class="help-details">
+        <summary>How dealbreakers fire (technical)</summary>
+        <div class="help-details-body">
+          <p>
+            A dealbreaker hits a show only when its tagged tag is a
+            <strong>category-rank</strong> match on AniList — meaning
+            AniList itself classifies the tag as a primary theme of
+            the show, not a passing mention. A show that touches
+            "ecchi" in one episode but isn't actually an ecchi show
+            won't trip an "ecchi" dealbreaker.
+          </p>
+          <p>
+            Dealbreakers act <strong>post-score</strong>, not
+            pre-score. The engine still computes a finalScore for
+            every show; the dealbreaker filter just removes hits from
+            the surfaced list (Smart Picks side panel + the
+            Smart-Score card on a series page renders a DEALBREAKER
+            chip instead of suppressing the card outright, so you can
+            see why we'd otherwise have rated it high).
+          </p>
+          <p>
+            The "Suggested" chips come from a per-tag analysis of your
+            taste vector's bottom mass — tags where you have
+            consistent negative signal but no explicit dealbreaker.
+            These are best guesses, not auto-applied.
+          </p>
+          <p class="help-source-note">
+            Source of truth:
+            <code>dimensions.js</code>'s
+            <code>dealbreakerCandidates</code> (suggestion logic),
+            <code>rank-recommendations.js</code> (filter application).
+          </p>
+        </div>
+      </details>
+    </section>
+    -->
+    <!-- /MVP-CUT (reactions + vibes + dealbreakers) -->
+
+    <section id="privacy" class="help-section">
+      <h2>Privacy</h2>
+      <p>
+        Smart Scoring runs entirely in your browser. There are no
+        servers, no telemetry, no analytics, and no accounts you sign
+        up for.
+      </p>
+      <p>What we read:</p>
+      <ul>
+        <li>Your Crunchyroll watch history (titles, completion %, ratings)
+            via the same authenticated session your browser already has.</li>
+        <li>Public AniList data about each show (tags, scores, recommendations).</li>
+        <li>If you enter your AniList username, your <strong>public</strong>
+            AniList list — no sign-in, no token. Or a MAL/AniList list from an
+            XML export file you upload.</li>
+      </ul>
+      <p>Where the data lives:</p>
+      <ul>
+        <li>All taste data lives in <code>chrome.storage.local</code> on
+            your machine. Uninstalling the extension wipes it.</li>
+        <li>No login tokens or passwords are stored — list import is by public
+            username or an uploaded file, never a credential.</li>
+        <li>Remove an imported list any time from the popup.</li>
+      </ul>
+      <p>
+        We don't have a server to send your data to. There's no "us"
+        to leak it.
+      </p>
+      <p class="help-callout">
+        <strong>Browser support:</strong> Smart Scoring is built for
+        Chromium browsers — Chrome, Edge, Brave, Arc, Opera. Firefox
+        and Safari aren't supported in alpha (different extension API
+        surfaces).
+      </p>
+    </section>
+
+    <section id="backup" class="help-section">
+      <h2>Backup &amp; restore</h2>
+      <p>
+        The first sync is slow — Crunchyroll watch history takes time to
+        fetch, AniList scoring imports take longer. <strong>Backup &amp;
+        restore</strong> lets you save all of that to a JSON file and load
+        it again on another PC, after a reinstall, or just as insurance.
+        It lives in the popup, below Engine status.
+      </p>
+      <p>What you can include:</p>
+      <ul>
+        <li><strong>CR data</strong> — your watch history and per-show metadata.</li>
+        <li><strong>AniList data</strong> — imported scores and link state (just your public-list data + username; no credentials).</li>
+        <li><strong>Survey + reactions</strong> — Quick Taste Check taps, ratings, and reactions on shows.</li>
+        <li><strong>Settings</strong> — dealbreakers, panel toggles, slider tunings.</li>
+      </ul>
+      <p>
+        All four checkboxes default on. Engine output (taste vector,
+        scored shows, caches) <em>auto-rides along</em> with any checked
+        bucket, so a restore lands instantly instead of recomputing.
+        Click <strong>Save backup</strong> and
+        <code>crsmart-backup-YYYY-MM-DD.json</code> downloads.
+      </p>
+      <p>
+        <strong>Open restore page</strong> opens a tab where you pick a
+        file, preview what's in it (schema version, bucket counts,
+        exported-when), and choose which buckets to restore. Anything you
+        skip — or any bucket the file lacks — is left untouched, so a
+        CR-only backup won't wipe AniList data already on the device.
+      </p>
+      <p class="help-callout">
+        <strong>The backup file is plain JSON</strong> — your taste data
+        (scores, settings, archetype state). It holds <strong>no login
+        credentials or tokens</strong> (AniList import is by public username),
+        so there's nothing password-grade to guard.
+      </p>
+      <details class="help-details">
+        <summary>How the format works (technical)</summary>
+        <div class="help-details-body">
+          <p>
+            The file is a versioned envelope with a top-level
+            <code>schemaVersion</code> integer and a <code>buckets</code>
+            map. Each bucket carries a curated list of
+            <code>chrome.storage.local</code> keys; synthetic / transient
+            keys (<code>_importState</code>, <code>_devAxisSandbox</code>,
+            <code>_tourMetrics</code>, <code>_engineHealth</code>) are
+            never included.
+          </p>
+          <pre class="help-code">{
+  "schemaVersion": 1,
+  "exportedAt": "2026-05-08T...",
+  "extensionVersion": "1.4.2",
+  "buckets": {
+    "cr":           { "watchShapes": {...}, "profileId": "..." },
+    "anilist":      { "externalScores": {...}, "aniListMeta": {...} },
+    "survey":       { "surveyShapes": {...}, "userRatings": {...} },
+    "settings":     { "dealbreakers": [...], "surfaceSettings": {...} },
+    "engineOutput": { "tasteVector": {...}, "allShowsScored": [...] }
+  }
+}</pre>
+          <p>
+            <strong>Smart-conditional engineOutput on import.</strong> The
+            file's cached engine output is trusted only when the import
+            covers every source bucket the device will end up with. So:
+          </p>
+          <ul>
+            <li>Fresh PC + "Save everything" backup → instant restore (~0s recompute).</li>
+            <li>Device has AniList linked + you import a CR-only file → file's engine output is discarded; pipeline recomputes (~10s) once writes land.</li>
+            <li>Settings-only restore → no source data changed; recompute is skipped entirely.</li>
+          </ul>
+          <p>
+            <strong>Atomic write.</strong> Affected keys get snapshotted
+            before the import; the actual write is a single
+            <code>chrome.storage.local.set({...})</code>. If the write
+            throws (quota exhaustion, serialization error), the snapshot
+            is restored and the engine state is exactly what it was before
+            you clicked Restore. No half-applied imports.
+          </p>
+          <p>
+            <strong>Per-bucket replace.</strong> Imported buckets overwrite
+            their keys; buckets <em>not</em> in the file are left untouched on
+            the device. The AniList bucket carries your linked username +
+            account record (no token), so restoring it re-links your public
+            list on the new device — no sign-in needed.
+          </p>
+          <p>
+            <strong>Cross-version handling.</strong> Higher
+            <code>schemaVersion</code> than the current build → reject
+            with a clear "update the extension" error. Lower → migration
+            chain (none yet, but the framework is in place). Unknown keys
+            inside a known bucket are silently ignored and surfaced in the
+            import summary.
+          </p>
+          <p class="help-source-note">
+            Source of truth:
+            <code>backup-schema.js</code> (envelope + smart-conditional rule),
+            <code>import.js</code> (preview + atomic restore),
+            <code>popup.js</code> (export panel).
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <section id="troubleshooting" class="help-section">
+      <h2>Troubleshooting</h2>
+      <p>
+        Most "is it broken?" moments fall into one of these. If none of
+        these match, the friction is probably worth reporting.
+      </p>
+
+      <details class="help-details faq-item">
+        <summary>The Smart Score card isn't showing up on a show page.</summary>
+        <div class="help-details-body">
+          <p>Three common causes:</p>
+          <ul class="help-axis-list">
+            <li><strong>Page didn't fully load.</strong> CR's series pages render in stages — the card needs the page's metadata. Refresh once.</li>
+            <li><strong>Engine still warming up on a fresh install.</strong> First load fetches AniList enrichment in the background. Wait a couple minutes, then refresh.</li>
+            <li><strong>You're not signed into Crunchyroll.</strong> The extension reads your watch state via your CR session. Sign in, refresh.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="help-details faq-item">
+        <summary>The side panel won't open / the sparkle button is missing.</summary>
+        <div class="help-details-body">
+          <p>The sparkle ✦ button is injected into CR's top bar. If it's missing:</p>
+          <ul class="help-axis-list">
+            <li>Refresh the CR page once.</li>
+            <li>Use the toolbar icon → "Open side panel" instead.</li>
+            <li>If neither works, open <code>chrome://extensions</code>, toggle Smart Scoring off and on, reload CR.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="help-details faq-item">
+        <summary>All my Smart Scores look about the same number.</summary>
+        <div class="help-details-body">
+          <p>
+            The engine hasn't learned enough about you yet to spread
+            the scores. In rough order of effectiveness:
+          </p>
+          <ul class="help-axis-list">
+            <li>Take the Quick Taste Check (~30 taps).</li>
+            <li>Connect AniList or MAL if you have a list.</li>
+            <li>Watch and rate a few shows on Crunchyroll.</li>
+          </ul>
+          <p>
+            Edge-anchored calibration kicks in once you've got real
+            spread — it stretches your top picks into TRUST ME and
+            your clear no's into SKIP, instead of leaving everything
+            mid-band.
+          </p>
+        </div>
+      </details>
+
+      <details class="help-details faq-item">
+        <summary>The toolbar icon is greyed out.</summary>
+        <div class="help-details-body">
+          <p>
+            Greyed = the extension is loaded but has no active CR tab
+            to attach to. Open any Crunchyroll page; the icon should
+            light up within a second or two.
+          </p>
+        </div>
+      </details>
+
+      <details class="help-details faq-item">
+        <summary>A show I love is scored low (or vice versa).</summary>
+        <div class="help-details-body">
+          <p>
+            One miss isn't a bug — the engine averages across signal,
+            so individual shows can be off-pattern. But two things
+            help:
+          </p>
+          <ul class="help-axis-list">
+            <li>Open the show's card and tag a couple of <strong>Reactions</strong>. They tell the engine <em>why</em> it landed and tune future picks.</li>
+            <li>If a tag the show carries is genuinely a turnoff for you, set it as a <strong>Dealbreaker</strong> (Settings → Advanced).</li>
+          </ul>
+        </div>
+      </details>
+    </section>
+
+    <section id="faq" class="help-section">
+      <h2>FAQ</h2>
+
+      <details class="help-details faq-item">
+        <summary>What happens to my data if I uninstall?</summary>
+        <div class="help-details-body">
+          <p>
+            All of it goes. Everything lives in
+            <code>chrome.storage.local</code>, which Chrome wipes on
+            uninstall — there's no cloud copy because there's no cloud.
+            Your taste vector, survey taps, ratings, and imported scores
+            are all gone.
+          </p>
+          <p>
+            If you reinstall, your Crunchyroll watch history resyncs on
+            its own (CR keeps it server-side, independent of the
+            extension); the rest you'd rebuild. To skip that, take a
+            <a href="#backup">backup</a> first.
+          </p>
+        </div>
+      </details>
+
+      <details class="help-details faq-item">
+        <summary>Can my partner and I share one Crunchyroll account?</summary>
+        <div class="help-details-body">
+          <p>
+            Yes. Each of you installs the extension on your own machine
+            (or your own Chrome profile if you share a computer). Storage
+            is isolated per Chrome profile per machine, so neither of you
+            sees the other's taste data even on the same CR account.
+          </p>
+          <p>
+            On Crunchyroll's side, watch history is keyed per
+            <em>profile</em>, not per account — so different CR profiles
+            give different histories and different taste shapes.
+          </p>
+        </div>
+      </details>
+
+      <details class="help-details faq-item">
+        <summary>The picks keep changing — is something broken?</summary>
+        <div class="help-details-body">
+          <p>Usually not. Two things move the list:</p>
+          <ul class="help-axis-list">
+            <li>You watched or rated a new show → the engine recomputes
+              your taste vector and reranks.</li>
+            <li>On a fresh install, AniList enrichment keeps landing in
+              the background → ranks update as show metadata fills in.</li>
+          </ul>
+          <p>
+            Give it a few hours after install for enrichment to finish;
+            after that the list settles unless you add new signal.
+          </p>
+        </div>
+      </details>
+
+      <details class="help-details faq-item">
+        <summary>It recommended a show I've never seen — how does it know about it?</summary>
+        <div class="help-details-body">
+          <p>
+            The candidate pool comes from AniList's recommendation graph
+            — roughly "people who liked the shows in your library also
+            liked <em>X</em>." The extension pulls that graph and scores
+            each candidate against your taste shape, so the recs include
+            shows you've never opened on Crunchyroll.
+          </p>
+          <p>
+            The Smart Score is ours; the candidate pool isn't. We score
+            what AniList says is adjacent to your library.
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <section id="reference" class="help-section">
+      <h2>Reference &amp; glossary</h2>
+      <p>
+        The lookup section. Skip it on your first read — it's here for
+        when you want to check a specific number or a term you didn't
+        recognize.
+      </p>
+
+      <h3 class="help-subhead">The numbers, in one place</h3>
+      <dl class="help-glossary">
+        <dt>Tiers</dt>
+        <dd>≥0.90 TRUST ME · ≥0.75 WORTH A SHOT · ≥0.55 STRETCH · ≥0.35 PROBABLY NOT · &lt;0.35 SKIP. The card shows the same cutoffs on a 0–10 scale (9.0 / 7.5 / 5.5 / 3.5).</dd>
+        <dt>Score blend</dt>
+        <dd>Ranked picks: 0.55·taste + 0.30·rec + 0.15·qual. On-page card: 0.50·taste + 0.35·qual + 0.15·crCF (or 0.55 / 0.45 with no Crunchyroll-collab signal). Both add lift = max(0, creatorN − 0.5) · 0.10.</dd>
+        <dt>Calibration</dt>
+        <dd>Edge-anchored: your top 5% of scores stretch up to ≥0.90, your bottom 5% down to ≤0.35, so the tier bands are never empty.</dd>
+        <dt>Confidence</dt>
+        <dd>0 shows of signal = cold · under 8 = thin · 8+ = calibrated. The Taste Shape radar stays dimmed until about 80 watched/rated shows, since mid-rank axes are noisy before then.</dd>
+        <dt>Peak vs Comfort</dt>
+        <dd>Split at AniList community average 75 — shows scoring ≥75 feed your Peak vector, &lt;75 feed Comfort.</dd>
+        <dt>Imports</dt>
+        <dd>Score → signal = (score − 7) ÷ 3, clamped to ±1 (7 is neutral). Confidence: completed 0.60 · dropped 0.55 · watching/paused 0.40 · planning skipped. An in-app Crunchyroll rating (~0.95+) outweighs any imported score.</dd>
+        <dt>Vibe filter</dt>
+        <dd>Tag fires below AniList rank 50 are dropped as noise; canonical genres always count. A show must fire ⌈selected ÷ 3⌉ of your chosen vibes to appear; matches sort by strength → match count → score.</dd>
+        <dt>Survey tag taps</dt>
+        <dd>A loved/skipped tag sets a floor/ceiling at 0.6× your strongest tag — overridden the moment your real watch history says more ("behavior stronger").</dd>
+      </dl>
+
+      <h3 class="help-subhead">Anime &amp; engine terms</h3>
+      <dl class="help-glossary">
+        <dt>Isekai</dt>
+        <dd>"Other world" — a protagonist transported to or reborn in a fantasy / game-like setting. Sword Art Online, Re:Zero.</dd>
+        <dt>Shounen / Seinen</dt>
+        <dd>Audience labels. Shounen = aimed at teen boys, often action with power-up arcs (Naruto, Demon Slayer). Seinen = aimed at adults, heavier and slower (Vinland Saga, Berserk).</dd>
+        <dt>Slice of life</dt>
+        <dd>Low-stakes everyday situations — vibes over plot. K-On!, Laid-Back Camp.</dd>
+        <dt>Iyashikei</dt>
+        <dd>"Healing" — a slice-of-life subgenre engineered to feel calming. Mushishi, Natsume's Book of Friends.</dd>
+        <dt>Ecchi</dt>
+        <dd>Sexually suggestive but non-explicit content; fanservice-heavy.</dd>
+        <dt>Mecha</dt>
+        <dd>Giant robots and piloted machines as a central element. Gundam, Evangelion.</dd>
+        <dt>Taste Vector</dt>
+        <dd>Your tag-mass map: how much positive (or negative) weight you've built up for each AniList tag, summed across everything you've watched, rated, and tapped.</dd>
+        <dt>Sentiment</dt>
+        <dd>One signed number per show (how much you liked it) plus a confidence weight. Watch %, ratings, reactions, and imports all fold into it.</dd>
+      </dl>
+    </section>
+
+    <!-- MVP-CUT (v0.2): FAQ + glossary commented out. Reference
+         material, not first-15-min essentials. To restore, delete
+         this preamble, the HTML comment open marker on the next
+         line, and the matching close marker + /MVP-CUT trailer that
+         sits just before the closing </main> tag below. -->
+    <!--
+    <section id="faq" class="help-section">
+      <h2>FAQ</h2>
+
+      <details class="help-details faq-item">
+        <summary>I share a Crunchyroll account with someone — can we both use the extension?</summary>
+        <div class="help-details-body">
+          <p>
+            Yes, with one caveat. Each of you installs the extension
+            on your <strong>own machine</strong> (or your own Chrome
+            profile if you share a computer). The extension's data
+            lives in <code>chrome.storage.local</code>, which is
+            isolated per Chrome profile per machine — so neither of
+            you sees the other's taste data even though you're using
+            the same CR account.
+          </p>
+          <p>
+            On Crunchyroll's side, your watch histories stay separate
+            because CR keys watch history per <em>profile</em>, not
+            per <em>account</em>. Different CR profiles → different
+            histories → different taste shapes.
+          </p>
+          <p>
+            On the new install, the other person just needs to open
+            any Crunchyroll page once. The extension auto-detects
+            their CR profile and starts syncing. They don't need to
+            click any "refresh" button — that's just a manual override
+            for power-users.
+          </p>
+        </div>
+      </details>
+
+      <details class="help-details faq-item">
+        <summary>What if my friend and I both use CR profiles in the <em>same</em> Chrome?</summary>
+        <div class="help-details-body">
+          <p>
+            This isn't supported in alpha. The extension stores one
+            taste vector per Chrome profile, not one per CR profile.
+            If you switch CR profiles inside the same Chrome window,
+            the engine will overwrite your taste shape with whoever's
+            data was synced last.
+          </p>
+          <p>
+            Workaround: each person uses a separate Chrome profile
+            (Chrome top-right avatar → "Add Chrome profile"). Each
+            Chrome profile has fully isolated extension storage, so
+            both engines stay clean.
+          </p>
+          <p>
+            Per-CR-profile state is on the v0.2 backlog if there's
+            demand.
+          </p>
+        </div>
+      </details>
+
+      <details class="help-details faq-item">
+        <summary>Why is my Smart Score blank or "still learning"?</summary>
+        <div class="help-details-body">
+          <p>
+            The engine needs taste signal to score things. On a fresh
+            install, three things can give it that signal:
+          </p>
+          <ul class="help-axis-list">
+            <li>Take the <strong>Quick Taste Check</strong> from the
+              popup (or the welcome tab) — 3 minutes, ~30 taps.</li>
+            <li>Connect <strong>AniList</strong> from the popup if you
+              keep a list there — usually the richest single source.</li>
+            <li>Just <strong>watch a few shows on Crunchyroll</strong>.
+              Watch history syncs automatically; the engine learns
+              from completion ratios, ratings, and rewatches.</li>
+          </ul>
+          <p>
+            The Taste Shape radar dims itself below ~80 watched/rated
+            shows because mid-rank axes are noisy until then. Trust
+            the strongest 2–3 spikes first; the radar sharpens as
+            data lands.
+          </p>
+        </div>
+      </details>
+
+      <details class="help-details faq-item">
+        <summary>The recommendations keep changing — is something broken?</summary>
+        <div class="help-details-body">
+          <p>
+            Probably not. Three things move the picks list:
+          </p>
+          <ul class="help-axis-list">
+            <li><strong>You watched / rated a new show</strong> → the
+              engine recomputes your taste vector and reranks
+              automatically.</li>
+            <li><strong>You reacted on a card</strong> → reactions
+              fold into Sentiment, which can shift related shows up
+              or down.</li>
+            <li><strong>AniList enrichment landed</strong> → on a fresh
+              install, the engine fetches show metadata from AniList
+              in the background; ranks update as enrichment fills in.</li>
+          </ul>
+          <p>
+            If you'd like the list to settle, give it a few hours
+            after install for enrichment to finish, then it should
+            stabilize unless you actively add new signal.
+          </p>
+        </div>
+      </details>
+
+      <details class="help-details faq-item">
+        <summary>The engine recommended a show I've never watched. How does it know about it?</summary>
+        <div class="help-details-body">
+          <p>
+            The candidate pool comes from AniList's recommendation
+            graph — roughly: "people who liked the shows in your
+            library also liked X." The extension pulls that graph and
+            scores each candidate against your taste shape. So the
+            recs include shows you've never seen even on Crunchyroll.
+          </p>
+          <p>
+            The Smart Score is ours; the candidate pool isn't. We
+            score what AniList says is adjacent to your library.
+          </p>
+        </div>
+      </details>
+
+      <details class="help-details faq-item">
+        <summary>What happens to my data if I uninstall?</summary>
+        <div class="help-details-body">
+          <p>
+            All of it goes. The extension stores everything in
+            <code>chrome.storage.local</code>, which Chrome wipes on
+            uninstall. There's no cloud copy because there's no
+            cloud. Your taste vector, reactions, survey taps,
+            AniList token — all gone.
+          </p>
+          <p>
+            If you reinstall later, you start from scratch. CR watch
+            history will resync (Crunchyroll has it server-side,
+            independent of the extension); the rest you'd rebuild.
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <section id="glossary" class="help-section">
+      <h2>Quick anime-term glossary</h2>
+      <p>
+        Some terms in tags, vibes, and dealbreakers assume you've been
+        around anime for a while. Quick reference for the rest of us.
+      </p>
+      <dl class="help-glossary">
+        <dt>Isekai</dt>
+        <dd>"Other world" — protagonist transported to or reborn in a fantasy or game-like setting. Sword Art Online, Mushoku Tensei, Re:Zero.</dd>
+
+        <dt>Shounen</dt>
+        <dd>Targeted at teen boys — often action-heavy with power-up arcs and big tournaments. Naruto, Demon Slayer, My Hero Academia.</dd>
+
+        <dt>Shoujo</dt>
+        <dd>Targeted at teen girls — often relationship- and emotion-driven, lighter art. Fruits Basket, Ouran High School Host Club.</dd>
+
+        <dt>Seinen</dt>
+        <dd>Targeted at adult men — heavier themes, slower pacing, more violence or moral grey. Vinland Saga, Berserk, Vagabond.</dd>
+
+        <dt>Josei</dt>
+        <dd>Targeted at adult women — grounded romance and slice-of-life with adult characters and workplaces. Nodame Cantabile, Chihayafuru.</dd>
+
+        <dt>Slice of life</dt>
+        <dd>Low-stakes everyday situations — vibes over plot. K-On!, Laid-Back Camp, Aria.</dd>
+
+        <dt>Iyashikei</dt>
+        <dd>"Healing" — a slice-of-life subgenre engineered to feel calming. Mushishi, Natsume's Book of Friends.</dd>
+
+        <dt>Ecchi</dt>
+        <dd>Sexually suggestive but non-explicit content; fanservice-heavy.</dd>
+
+        <dt>Mecha</dt>
+        <dd>Giant robots and piloted machines as a central element. Gundam, Evangelion, Code Geass.</dd>
+
+        <dt>Shounen Ai / Yaoi</dt>
+        <dd>Romance between male characters — shounen ai is romantic/emotional, yaoi is more explicit.</dd>
+
+        <dt>Shoujo Ai / Yuri</dt>
+        <dd>Romance between female characters — shoujo ai romantic, yuri more explicit.</dd>
+
+        <dt>OVA / ONA</dt>
+        <dd>Original Video Animation / Original Net Animation — direct-to-video or web-only releases, often shorter or experimental side-stories.</dd>
+
+        <dt>Cour</dt>
+        <dd>A 12–13 episode broadcast block. "Two-cour" = two consecutive blocks (~24 episodes), usually one production unit.</dd>
+      </dl>
+    </section>
+    -->
+    <!-- /MVP-CUT (faq + glossary) -->
+
+    <footer class="help-footer">
+      <span class="help-footer-meta" id="help-version">Reflects the current build</span>
+      <span class="help-footer-sep">·</span>
+      <a href="https://github.com/anitastic-pixel/Crunchyroll-Smart-Scoring"
+         target="_blank" rel="noopener">Read the engine on GitHub</a>
+      <span class="help-footer-sep">·</span>
+      <span class="help-footer-meta">Everything runs locally — nothing leaves your browser.</span>
+    </footer>
+
+  </main>
+
+  <a href="#top" class="help-to-top" aria-label="Back to top">↑</a>
+  <script src="help.js"></script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Import a list export (MAL / AniList XML) — Smart Scoring</title>
+  <link rel="stylesheet" href="import.css" />
+  <style>
+    /* Page-local additions on top of the shared import.css. */
+    .mal-help {
+      margin: 16px 0;
+      padding: 12px 14px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .mal-help strong { font-weight: 600; }
+    .mal-help ol { margin: 8px 0 0; padding-left: 20px; }
+    .mal-help li { margin: 2px 0; }
+    .mal-help a { color: #b4d3ff; text-decoration: underline; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 6px 16px;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+    .stats-grid dt { color: rgba(255, 255, 255, 0.6); }
+    .stats-grid dd { margin: 0; font-variant-numeric: tabular-nums; }
+    .status-mix {
+      font-variant-numeric: tabular-nums;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 12px;
+    }
+    .working-substatus {
+      margin-top: 6px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      font-variant-numeric: tabular-nums;
+      min-height: 1em;
+    }
+    .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(255, 144, 64, 0.08);
+    }
+  </style>
+</head>
+<body>
+  <main class="import-shell">
+    <header class="import-header">
+      <h1>Import a list export (MAL / AniList XML)</h1>
+      <p class="muted">
+        Drop a MyAnimeList XML export — Smart Scoring folds its scores and
+        watch statuses into your taste vector. <strong>AniList users with a
+        private list</strong> can use this too: every AniList export tool
+        produces this same MAL-XML format, so it imports here all the same.
+        (Public AniList list? The username import in the popup is simpler.)
+      </p>
+    </header>
+
+    <!-- Stage 1: pick. -->
+    <section class="stage stage-pick" data-stage="pick">
+      <div class="mal-help">
+        <strong>MyAnimeList export:</strong>
+        <ol>
+          <li>Sign in at <a href="https://myanimelist.net" target="_blank" rel="noopener">myanimelist.net</a>.</li>
+          <li>Open your profile → click the <em>Anime List</em> tab.</li>
+          <li>In the left sidebar: <em>Export</em> → choose <em>Anime List</em> → click <em>Export My List</em>.</li>
+          <li>You'll get an <code>animelist_…xml.gz</code> file. Drop it below as-is, or unzip it to <code>.xml</code> first — either works.</li>
+        </ol>
+        <strong>AniList export (private lists):</strong>
+        <ol>
+          <li>AniList has no built-in export, so use a converter such as
+              <a href="https://github.com/nathanwentworth/anilist-to-mal" target="_blank" rel="noopener">anilist-to-mal</a>
+              or <a href="https://malscraper.azurewebsites.net/" target="_blank" rel="noopener">malscraper</a>
+              to turn your AniList list into a MAL-format <code>.xml</code>.</li>
+          <li>Drop that file below — same as a MAL export.</li>
+        </ol>
+      </div>
+
+      <label class="dropzone" id="dropzone">
+        <span class="dropzone-icon" aria-hidden="true">↓</span>
+        <span class="dropzone-prompt">Drop your MAL or AniList XML export here</span>
+        <span class="dropzone-or">or</span>
+        <span class="dropzone-button">choose a file…</span>
+        <input type="file" accept=".xml,.gz,application/xml,application/gzip,text/xml" id="file-input" />
+      </label>
+      <div class="status-line" id="pick-status" aria-live="polite"></div>
+    </section>
+
+    <!-- Stage 2: preview. -->
+    <section class="stage stage-preview hidden" data-stage="preview">
+      <div class="card">
+        <header class="card-head">
+          <span class="card-head-title">List contents</span>
+          <button type="button" class="text-btn" id="cancel-btn">cancel</button>
+        </header>
+
+        <dl class="stats-grid">
+          <dt>Entries</dt><dd id="meta-entries">—</dd>
+          <dt>Rated</dt><dd id="meta-rated">—</dd>
+          <dt>Status mix</dt><dd id="meta-status-mix" class="status-mix">—</dd>
+          <dt>File</dt><dd id="meta-filename">—</dd>
+        </dl>
+
+        <div class="action-row">
+          <button type="button" class="btn-primary" id="import-btn">Import</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stage 3: working. -->
+    <section class="stage stage-working hidden" data-stage="working">
+      <div class="working-spinner" aria-hidden="true"></div>
+      <div class="working-status" id="working-status">Starting…</div>
+      <div class="working-substatus" id="working-substatus"></div>
+    </section>
+
+    <!-- Stage 4: done. -->
+    <section class="stage stage-done hidden" data-stage="done">
+      <div class="card">
+        <header class="card-head">
+          <span class="card-head-title">✓ Imported</span>
+        </header>
+        <div class="restore-summary" id="done-summary"></div>
+        <div class="action-row">
+          <button type="button" class="btn-primary" id="close-tab-btn">Close tab</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stage 5: error. -->
+    <section class="stage stage-error hidden" data-stage="error">
+      <div class="card card-error">
+        <header class="card-head">
+          <span class="card-head-title">✗ Couldn't import</span>
+        </header>
+        <div class="error-message" id="error-message"></div>
+        <div class="action-row">
+          <button type="button" class="btn-primary" id="error-retry-btn">Try another file</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="import-mal-xml.js"></script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "private": true,
+  "comment": "Node-only — tells Node to treat .js files as ESM so tests can import the modules the extension's HTML loads via <script type=\"module\">. Chrome ignores this file (MV3 reads manifest.json, not package.json)."
+}

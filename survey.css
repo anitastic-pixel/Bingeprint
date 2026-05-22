@@ -1,0 +1,2589 @@
+/* Survey page — matches popup palette so the experience reads as
+   the same product. Wider canvas (full window) lets the tile grid
+   breathe while popup constraints stayed tight. */
+
+:root {
+  --bg: #14100d;
+  --bg-elev: #1c1714;
+  --bg-card: #221c18;
+  --fg: #f5efe8;
+  --muted: rgba(245, 239, 232, 0.55);
+  --muted-strong: rgba(245, 239, 232, 0.75);
+  --line: rgba(255, 255, 255, 0.08);
+  --accent: #ff8c28;
+  --accent-soft: rgba(255, 140, 40, 0.16);
+  --accent-strong: rgba(255, 140, 40, 0.55);
+  --loved: #ff4f8a;
+  --loved-soft: rgba(255, 79, 138, 0.20);
+  --loved-border: rgba(255, 79, 138, 0.65);
+  --disliked: #6c7280;
+  --disliked-soft: rgba(108, 114, 128, 0.22);
+  --disliked-border: rgba(108, 114, 128, 0.55);
+  --confidence-low: #d9874e;
+  --confidence-mid: #d9c14e;
+  --confidence-high: #6fcf73;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  /* Lock horizontal page scroll so elastic-edge translateX on rows
+     can overdraw without triggering body-level horizontal scroll. */
+  overflow-x: hidden;
+}
+body {
+  position: relative;
+  /* Two stacked halos, one warm (top) and one cool (bottom-left).
+     The --scroll-depth var is updated on scroll (0 → 1 across the
+     page) and shifts the cool halo from invisible at the top to
+     visible deep in the scroll, so the page subtly cools as the
+     user moves through it. The warm halo fades correspondingly.
+     Both effects are < 8% opacity so they read as atmosphere, not
+     a color-changing gimmick. */
+  --scroll-depth: 0;
+  background:
+    radial-gradient(
+      ellipse 90% 65% at 50% -8%,
+      rgba(255, 140, 40, calc(0.07 - 0.05 * var(--scroll-depth))) 0%,
+      rgba(255, 79, 138, calc(0.025 - 0.02 * var(--scroll-depth))) 35%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 70% 55% at 18% 110%,
+      rgba(95, 184, 216, calc(0.06 * var(--scroll-depth))) 0%,
+      rgba(45, 216, 196, calc(0.025 * var(--scroll-depth))) 35%,
+      transparent 60%
+    ),
+    var(--bg);
+  background-attachment: fixed;
+  transition: background 220ms ease;
+}
+/* Subtle film grain via inline SVG noise — adds tactile texture
+   without a binary asset. Opacity is tiny so it reads as quality
+   rather than artifact. Fixed positioning so the grain doesn't
+   shift while scrolling. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 220px 220px;
+  mix-blend-mode: overlay;
+}
+/* Section-aware tint — a soft full-page wash whose color is set by
+   JS to the most-visible section's accent. Travels through hues as
+   the user scrolls. The transition smooths the handoff between
+   adjacent sections so the page feels like it's drifting through
+   anime worlds rather than snapping. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 110% 80% at 50% 50%,
+    var(--section-tint, transparent) 0%,
+    transparent 65%
+  );
+  opacity: 0.14;
+  mix-blend-mode: screen;
+  transition: background 700ms cubic-bezier(0.32, 0.72, 0.28, 1);
+}
+
+/* Drifting bokeh orb layer — six oversized blurred circles fixed to
+   the viewport, slowly translating in different directions. Each orb
+   gets its own keyframe so they don't drift in sync. Disabled for
+   reduced-motion users (the orbs stay placed but don't animate). */
+.background-orbs {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.18;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+}
+.orb-1 {
+  width: 480px; height: 480px;
+  background: #ff9d4d;
+  top: -120px; left: -100px;
+  animation: orb-drift-a 13s ease-in-out infinite;
+}
+.orb-2 {
+  width: 360px; height: 360px;
+  background: #c184ff;
+  top: 28%; right: -90px;
+  animation: orb-drift-b 11s ease-in-out infinite;
+}
+.orb-3 {
+  width: 540px; height: 540px;
+  background: #5fb8d8;
+  top: 55%; left: 18%;
+  opacity: 0.14;
+  animation: orb-drift-c 15s ease-in-out infinite;
+}
+.orb-4 {
+  width: 320px; height: 320px;
+  background: #ff5f9d;
+  bottom: -120px; left: 28%;
+  animation: orb-drift-d 12s ease-in-out infinite;
+}
+.orb-5 {
+  width: 420px; height: 420px;
+  background: #5fd5c4;
+  top: 8%; left: 55%;
+  opacity: 0.13;
+  animation: orb-drift-e 14s ease-in-out infinite;
+}
+.orb-6 {
+  width: 280px; height: 280px;
+  background: #ff6a3d;
+  bottom: 18%; right: 22%;
+  animation: orb-drift-f 10s ease-in-out infinite;
+}
+@keyframes orb-drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(120px, 80px, 0); }
+}
+@keyframes orb-drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(-100px, 60px, 0); }
+}
+@keyframes orb-drift-c {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(80px, -90px, 0); }
+}
+@keyframes orb-drift-d {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(-90px, -110px, 0); }
+}
+@keyframes orb-drift-e {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(110px, 70px, 0); }
+}
+@keyframes orb-drift-f {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(-70px, -90px, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .orb { animation: none; }
+}
+
+.survey-app { position: relative; z-index: 1; }
+
+/* Fade-swap state on filter changes — see fadeSwapGrid in survey.js.
+   Animation-based (not transition) so removing the class snaps back
+   to opacity 1 instantly, letting the per-section stagger animation
+   below handle the visible re-entry. If we used a CSS transition,
+   the survey-main fade-in would overlap the section staggers and
+   read as two competing fades.
+   Pointer-events suppression while invisible prevents tile clicks
+   landing on stale DOM mid-swap. */
+.survey-main {
+  transform-origin: center top;
+}
+.survey-main.is-swapping {
+  animation: survey-main-fade-out 140ms cubic-bezier(0.32, 0.72, 0.28, 1) forwards;
+  pointer-events: none;
+}
+@keyframes survey-main-fade-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.985); }
+}
+
+/* Section stagger entry — every render (page load OR filter swap)
+   pulls the new sections in via a small Y-offset + opacity sweep,
+   with the per-section delay driven by --section-idx (set inline by
+   buildSectionShell). animation-fill-mode: backwards holds the
+   opening keyframe (opacity 0) during the delay so off-stagger
+   sections stay invisible until their turn.
+
+   Per-row delay: 60ms × idx, capped at 6 (so cascade tops out at
+   360ms; sections beyond #6 share the last delay slot to keep the
+   tail from feeling stretched). Cascade is now clearly visible —
+   each row enters distinctly rather than blurring together. */
+.tile-grid-section {
+  animation: section-stagger-in 280ms cubic-bezier(0.32, 0.72, 0.28, 1) backwards;
+  animation-delay: calc(min(var(--section-idx, 0), 6) * 60ms);
+}
+@keyframes section-stagger-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .survey-main.is-swapping { animation: none; opacity: 1; transform: none; }
+  .tile-grid-section { animation: none; }
+}
+
+/* Top-of-page progress bar — visible while applyAndRecompute is in
+   flight. Indeterminate (a moving band rather than a fill) since
+   we don't have a percentage from the worker. Sits above everything
+   including the sticky header so the user can always see it. */
+.apply-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 100;
+  pointer-events: none;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+.apply-progress[hidden] { display: none; }
+.apply-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 35%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--accent) 30%,
+    var(--loved) 50%,
+    var(--accent) 70%,
+    transparent 100%
+  );
+  filter: drop-shadow(0 0 6px var(--accent-strong));
+  animation: apply-progress-slide 1.1s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+@keyframes apply-progress-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(calc(100vw / 0.35)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .apply-progress-bar {
+    animation: none;
+    width: 100%;
+    background: var(--accent);
+    opacity: 0.5;
+  }
+}
+
+/* Apply-pending state on action buttons — disabled feel + a tiny
+   spinner inserted via ::before so the label reads as "working." */
+.done-btn.is-applying,
+.summary-btn-primary.is-applying,
+.summary-btn-secondary.is-applying {
+  opacity: 0.7;
+  pointer-events: none;
+  position: relative;
+}
+.done-btn.is-applying::before,
+.summary-btn-primary.is-applying::before,
+.summary-btn-secondary.is-applying::before {
+  content: '';
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin-right: 7px;
+  vertical-align: -1px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: apply-spinner 0.7s linear infinite;
+}
+@keyframes apply-spinner {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .done-btn.is-applying::before,
+  .summary-btn-primary.is-applying::before,
+  .summary-btn-secondary.is-applying::before {
+    animation: none;
+  }
+}
+
+/* ── View Transitions API ─────────────────────────────────────
+   Filter / view / mature toggles are wrapped in
+   document.startViewTransition. Each archetype section carries a
+   view-transition-name (set in renderGrid) so the browser snapshots
+   per-row instead of per-tile — that's the granularity that doesn't
+   flash when row width changes during a filter swap.
+
+   Default crossfade timing is browser-default (~250ms). We tighten
+   to 220ms with a satisfying out-curve so the swap feels snappy
+   rather than draggy. Reduced-motion collapses to instant. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0.28, 1);
+}
+::view-transition-group(*) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0.28, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-group(*) {
+    animation-duration: 0.001ms;
+  }
+}
+
+/* ── Sticky compact header ────────────────────────────────────
+   Two stacked rows that share a single sticky surface:
+     1. .header-titlebar — title + 1-line subtitle on left,
+        confidence ring + Done button on right. Collapses on scroll
+        (subtitle hides, title shrinks, padding tightens).
+     2. .header-controlbar — mode tabs, service filter pills, view
+        switcher, mature pill, all on one line. Always visible.
+   Sticky archetype headers below stick at top: var(--header-stick)
+   so they always sit immediately under the controlbar. The JS
+   measures the live header height and writes that var. */
+
+.survey-app {
+  /* Center within the full viewport (not inside a sidebar-reserved
+     lane). The wide-viewport rule below caps max-width so the
+     centered app doesn't poke into the fixed taste-sidebar's
+     footprint. */
+  max-width: min(100%, 1400px);
+  margin: 0 auto;
+  padding: 20px 28px 24px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  --header-stick: 96px;
+}
+@media (min-width: 1280px) {
+  .survey-app {
+    /* Sidebar takes ~326px on the right (308 width + 18 inset) plus
+       a 40px breathing buffer = ~732px reserved on the right side
+       of viewport. Centered around viewport center, max-width
+       cannot exceed 100vw - 732px without colliding with the
+       sidebar's footprint. Whichever floor (1400 cap or
+       sidebar-aware calc) is smaller wins. */
+    max-width: min(1400px, calc(100vw - 732px));
+  }
+}
+
+/* ── Onboarding funnel strip ─────────────────────────────────
+   Three-step progress indicator above the header. Sits above the
+   sticky header (not sticky itself) so it scrolls away once the
+   user is mid-tap. Steps go: pending (○) → active (●) → done (✓). */
+.onboarding-funnel {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+  font-size: 12px;
+}
+.funnel-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted, #9a8e80);
+  padding: 0 10px;
+  position: relative;
+}
+.funnel-step + .funnel-step::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  width: 16px;
+  height: 1px;
+  background: var(--line, rgba(255, 255, 255, 0.12));
+}
+.funnel-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line, rgba(255, 255, 255, 0.3));
+  background: transparent;
+  display: inline-block;
+  flex: 0 0 auto;
+  transition: background 200ms ease, border-color 200ms ease;
+}
+.funnel-step.is-active .funnel-dot {
+  background: var(--accent, #ff8c28);
+  border-color: var(--accent, #ff8c28);
+  box-shadow: 0 0 0 4px rgba(255, 140, 40, 0.15);
+}
+.funnel-step.is-active .funnel-label {
+  color: var(--accent, #ff8c28);
+  font-weight: 600;
+}
+.funnel-step.is-done .funnel-dot {
+  background: rgba(60, 200, 120, 0.85);
+  border-color: rgba(60, 200, 120, 0.85);
+}
+.funnel-step.is-done .funnel-dot::after {
+  content: '✓';
+  display: block;
+  text-align: center;
+  font-size: 9px;
+  line-height: 11px;
+  color: #0a1a0a;
+  font-weight: 700;
+}
+.funnel-step.is-done .funnel-label {
+  color: var(--text, #f0e8df);
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.survey-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* Negative margins counteract the .survey-app's padding so the
+     sticky header reaches edge-to-edge of the viewport. Inset
+     padding restores breathing room inside. */
+  margin: -20px -28px 0;
+  padding: 14px 28px 12px;
+  background: rgba(20, 16, 13, 0.82);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  border-bottom: 1px solid transparent;
+  transition:
+    padding 240ms cubic-bezier(0.32, 0.72, 0.28, 1),
+    gap 240ms cubic-bezier(0.32, 0.72, 0.28, 1),
+    background-color 200ms ease,
+    border-color 200ms ease;
+}
+.survey-header.is-compact {
+  padding: 8px 28px;
+  gap: 6px;
+  background: rgba(20, 16, 13, 0.94);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+.header-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-width: 0;
+}
+.header-left { flex: 1 1 auto; min-width: 0; }
+.header-right {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.survey-title {
+  margin: 0 0 2px 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  transition: font-size 240ms cubic-bezier(0.32, 0.72, 0.28, 1), margin 240ms ease;
+}
+.survey-header.is-compact .survey-title {
+  font-size: 15px;
+  margin-bottom: 0;
+}
+.survey-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  max-width: 640px;
+  max-height: 22px;
+  opacity: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition:
+    max-height 220ms cubic-bezier(0.32, 0.72, 0.28, 1),
+    opacity 180ms ease,
+    margin 220ms ease;
+}
+.survey-header.is-compact .survey-subtitle {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+}
+
+/* Confidence ring — replaces the old pill badge. SVG arc fills as
+   the user taps; target is 25 taps for a "rich signal" full ring.
+   Color matches the confidence tier (low/mid/high). The count sits
+   in the center; a tiny label tags along to the left in expanded
+   state and hides in compact. */
+.confidence-ring {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.confidence-ring .ring-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+.confidence-ring .ring-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 3;
+}
+.confidence-ring .ring-fill {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 100.531;
+  stroke-dashoffset: 100.531;
+  transition:
+    stroke-dashoffset 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    stroke 200ms ease,
+    filter 200ms ease;
+}
+.confidence-ring[data-level="low"]  .ring-fill { stroke: var(--confidence-low); }
+.confidence-ring[data-level="mid"]  .ring-fill { stroke: var(--confidence-mid); }
+.confidence-ring[data-level="high"] .ring-fill {
+  stroke: var(--confidence-high);
+  filter: drop-shadow(0 0 6px rgba(111, 207, 115, 0.45));
+  animation: ring-glow 2.4s ease-in-out infinite;
+}
+/* Empty-state breathing: subtle scale pulse on the whole ring to
+   suggest "tap me." Stops as soon as a single tap registers. */
+.confidence-ring[data-empty="true"] {
+  animation: ring-breathe 2.6s ease-in-out infinite;
+}
+@keyframes ring-breathe {
+  0%, 100% { transform: scale(1);    opacity: 0.85; }
+  50%      { transform: scale(1.07); opacity: 1.00; }
+}
+@keyframes ring-glow {
+  0%, 100% { filter: drop-shadow(0 0 5px rgba(111, 207, 115, 0.32)); }
+  50%      { filter: drop-shadow(0 0 11px rgba(111, 207, 115, 0.60)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confidence-ring[data-empty="true"],
+  .confidence-ring[data-level="high"] .ring-fill { animation: none; }
+}
+.confidence-ring .ring-count {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+  letter-spacing: 0;
+}
+.confidence-ring[data-level="low"]  .ring-count { color: var(--confidence-low); }
+.confidence-ring[data-level="mid"]  .ring-count { color: var(--confidence-mid); }
+.confidence-ring[data-level="high"] .ring-count { color: var(--confidence-high); }
+.confidence-ring[data-empty="true"] .ring-count { font-size: 14px; opacity: 0.45; }
+.confidence-ring .ring-label {
+  /* Hidden by default — surfaces only as a tooltip via title attr.
+     Visible inline on wide viewports where there's room beside the ring. */
+  display: none;
+}
+
+.done-btn {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 14px;
+  background: var(--accent);
+  color: #14100d;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease, transform 80ms ease;
+}
+.done-btn:hover { background: #ffa14e; }
+.done-btn:active { transform: translateY(1px); }
+.done-btn:disabled {
+  background: var(--bg-elev);
+  color: var(--muted);
+  border-color: var(--line);
+  cursor: not-allowed;
+}
+
+/* ── Header control bar ──────────────────────────────────────
+   Mode tabs · service filter · view switcher · mature pill, all on
+   one row. Wraps on narrow viewports. The shows-only middle group
+   (filter + switcher) is hidden by survey.js when in Genres mode. */
+.header-controlbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.header-shows-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.header-shows-controls[hidden] { display: none; }
+.header-controlbar .mature-pill { margin-left: auto; }
+
+/* ── Legend ──────────────────────────────────────────────────── */
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted-strong);
+}
+.legend-arrow { opacity: 0.4; }
+/* Slim vertical divider between the state-cycle group and the
+   tier-badge legend group, so the legend reads as two micro-keys
+   on one row instead of an unbroken list. */
+.legend-divider {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.10);
+  margin: 0 4px;
+  flex: 0 0 auto;
+}
+/* Mini versions of the .tile-tier-badge pills — same gradients and
+   typography as the on-tile badges so users instantly recognize
+   the mark. Slightly smaller (font-size 9px vs 9px on tiles, less
+   padding) so they sit comfortably inline with the legend text. */
+.legend-tier-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  border-radius: 3px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  margin-right: 6px;
+}
+.legend-tier-pill.tier-top {
+  background: linear-gradient(135deg, #f7c948 0%, #d99a1c 100%);
+  color: #2a1a05;
+  border: 1px solid rgba(255, 255, 255, 0.30);
+}
+.legend-tier-pill.tier-rare {
+  background: linear-gradient(135deg, #5fd5c4 0%, #2caab1 100%);
+  color: #062b2a;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+.legend-hint {
+  margin-left: auto;
+  font-style: italic;
+  opacity: 0.75;
+}
+
+/* ── Mode tabs (Shows / Genres) ─────────────────────────────── */
+.mode-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  flex: 0 0 auto;
+}
+.mode-tab {
+  padding: 7px 16px;
+  background: transparent;
+  color: var(--muted-strong);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
+}
+.mode-tab:hover {
+  background: rgba(255, 140, 40, 0.08);
+  color: var(--fg);
+}
+.mode-tab.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent-strong);
+  color: var(--fg);
+  box-shadow: 0 2px 10px rgba(255, 140, 40, 0.15);
+}
+.mode-tab:active {
+  transform: translateY(1px);
+}
+
+/* Mature toggle pill — global modifier, applies to both modes. */
+.mature-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  background: var(--bg-elev);
+  color: var(--muted-strong);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.mature-pill:hover {
+  border-color: rgba(255, 140, 40, 0.35);
+  color: var(--fg);
+}
+.mature-pill.is-on {
+  background: rgba(255, 79, 138, 0.12);
+  border-color: rgba(255, 79, 138, 0.50);
+  color: var(--fg);
+}
+.mature-pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: background 0.15s ease;
+}
+.mature-pill.is-on .mature-pill-dot {
+  background: var(--loved);
+}
+
+/* Tab content wrapper — hidden via [hidden] when inactive. */
+.tab-content[hidden] { display: none; }
+.tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Genres-mode disclaimer. */
+.genre-disclaimer {
+  margin: 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--muted);
+  padding: 0 4px;
+}
+
+/* ── View switcher (Mainstream / All / Deep Cuts) ────────────── */
+.view-switcher {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  flex: 0 0 auto;
+}
+.view-btn {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 5px 11px;
+  background: transparent;
+  color: var(--muted-strong);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.view-btn:hover {
+  background: rgba(255, 140, 40, 0.06);
+  color: var(--fg);
+}
+.view-btn.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent-strong);
+  color: var(--fg);
+}
+.view-btn-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.view-btn-hint {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 400;
+  letter-spacing: 0.1px;
+}
+.view-btn.is-active .view-btn-hint {
+  color: var(--muted-strong);
+}
+.state-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  background: var(--bg-card);
+}
+.state-icon.state-loved {
+  background: var(--loved-soft);
+  border-color: var(--loved-border);
+  color: var(--loved);
+}
+.state-icon.state-disliked {
+  background: var(--disliked-soft);
+  border-color: var(--disliked-border);
+  color: var(--muted-strong);
+}
+
+/* ── Tile grid ───────────────────────────────────────────────── */
+.tile-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.tile-grid-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+}
+/* Section-boundary flash — when the scroll-position observer marks a
+   new section as dominant, JS adds .is-just-active for one animation
+   cycle. A 4px accent-colored beam streaks across the top of the
+   section with a heavy drop-shadow halo, then fades. Wider than the
+   section so the gradient's bright peak sweeps visibly. Uses
+   plus-lighter so it lights up the page instead of painting over. */
+.tile-grid-section::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -12%;
+  right: -12%;
+  height: 4px;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    transparent 28%,
+    color-mix(in srgb, var(--arch-accent, var(--accent)) 40%, transparent) 38%,
+    var(--arch-accent, var(--accent)) 50%,
+    color-mix(in srgb, var(--arch-accent, var(--accent)) 40%, transparent) 62%,
+    transparent 72%,
+    transparent 100%
+  );
+  opacity: 0;
+  filter: drop-shadow(0 0 10px var(--arch-accent, var(--accent)))
+          drop-shadow(0 0 24px color-mix(in srgb, var(--arch-accent, var(--accent)) 60%, transparent));
+  transform: translateX(-40%) scaleX(0.55);
+  mix-blend-mode: plus-lighter;
+  z-index: 7;
+  border-radius: 4px;
+}
+.tile-grid-section.is-just-active::before {
+  animation: section-boundary-flash 1500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes section-boundary-flash {
+  0%   { opacity: 0;    transform: translateX(-40%) scaleX(0.55); }
+  18%  { opacity: 1;    transform: translateX(-12%) scaleX(0.95); }
+  45%  { opacity: 1;    transform: translateX(8%)   scaleX(1.05); }
+  72%  { opacity: 0.6;  transform: translateX(20%)  scaleX(1.10); }
+  100% { opacity: 0;    transform: translateX(32%)  scaleX(1.15); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile-grid-section.is-just-active::before { animation: none; }
+}
+.tile-grid-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--fg);
+  /* Sticky pin: when scrolling deep into a long archetype's row, the
+     header stays at top of viewport so the user keeps context. The
+     top:56px offset clears the morphing survey-header in its compact
+     state — when the survey-header is at full height (scroll near 0),
+     archetype headers haven't reached sticky position yet anyway, so
+     no overlap.
+     z-index above tile cover, below the burst overlays. */
+  position: sticky;
+  top: var(--header-stick, 92px);
+  z-index: 6;
+  /* Left padding aligns the section-header bar with where the first
+     visible tile emerges past the row's edge-fade mask (mask 40px +
+     row padding 12px = ~52px). The bar visually sits at the start
+     of the tile band rather than 50px adrift in the gutter. */
+  padding: 12px 12px 10px 52px;
+  background: linear-gradient(
+    180deg,
+    var(--bg) 0%,
+    var(--bg) 65%,
+    rgba(20, 16, 13, 0.6) 100%
+  );
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+/* Vertical accent bar before each archetype name — uses the
+   per-archetype hue (set inline as --arch-accent on the section).
+   Falls back to the page accent for sections without an override.
+   A vertically-drifting white sheen sweeps top→bottom every ~5s,
+   making the bar feel "alive" without competing for attention.
+   Implemented via background-position animation on a tall layered
+   gradient that combines the base accent with a translucent
+   highlight stop. */
+.tile-grid-section-header::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 3px;
+  height: 18px;
+  border-radius: 2px;
+  background:
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent 35%,
+      rgba(255, 255, 255, 0.85) 50%,
+      transparent 65%,
+      transparent 100%
+    ),
+    var(--arch-accent, var(--accent));
+  background-size: 100% 240%, 100% 100%;
+  background-position: 0 -120%, 0 0;
+  background-repeat: no-repeat;
+  box-shadow: 0 0 8px var(--arch-accent, var(--accent-strong));
+  filter: saturate(1.05);
+  animation: section-bar-sheen 5.4s ease-in-out infinite;
+}
+@keyframes section-bar-sheen {
+  0%   { background-position: 0 -120%, 0 0; }
+  50%  { background-position: 0 220%,  0 0; }
+  100% { background-position: 0 220%,  0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile-grid-section-header::before { animation: none; }
+}
+/* Two-line header text block: name on top, flavor subtitle below.
+   The name picks up a subtle archetype-tinted color so the headline
+   reads as part of its palette. The flavor line stays muted and
+   loses the all-caps tracking that the headline carries. */
+.tile-grid-section-header .section-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.tile-grid-section-header .section-header-name {
+  color: color-mix(in srgb, var(--arch-accent, var(--fg)) 22%, var(--fg));
+}
+.tile-grid-section-header .section-header-flavor {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  text-transform: none;
+  color: var(--muted);
+  font-style: italic;
+}
+/* Genre-grid sections still use the legacy single-span headline.
+   Tint them with the page accent for parity with archetype headers. */
+.tile-grid-section-header > span:not([class]):first-of-type {
+  color: color-mix(in srgb, var(--accent) 22%, var(--fg));
+}
+.tile-grid-section-count {
+  margin-left: auto;
+}
+.tile-grid-section-count {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.tile-grid-row {
+  /* Slider-ready: nowrap + overflow scroll-snap. With ≤3 tiles in a row
+     (current Shows mode), nothing scrolls and conditional centering
+     kicks in via justify-content. When the pool expands or Genres mode
+     uses this same class, the slider takes over naturally. */
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: visible;
+  /* proximity snap — gentle alignment when the user comes to rest,
+     doesn't fight against the JS-driven momentum decay. */
+  scroll-snap-type: x proximity;
+  /* Native scrollbar hidden — survey.js renders a slim 3px progress
+     track below the row instead. */
+  scrollbar-width: none;
+  /* Pointer-drag uses pointer events; pan-y lets vertical page
+     scroll fall through to the browser, horizontal stays with us. */
+  touch-action: pan-y;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  /* will-change hints to compositor that transform/scrollLeft change
+     so it can promote the row to its own layer (smoother momentum). */
+  will-change: transform, scroll-position;
+  justify-content: center;        /* symmetric when content fits */
+  /* Vertical padding gives the hover lift+scale (translateY(-3px)
+     + scale(1.03)) room to breathe without the tile getting clipped
+     by the row's own bounds. Horizontal stays at 12px. */
+  padding: 14px 12px 16px;
+  /* Edge-fade is now drawn by .tile-grid-rowframe's ::before/::after
+     overlays (section-tinted, motion-aware). The row itself doesn't
+     mask; overlays sit on top and absorb the half-clipped tiles. */
+}
+.tile-grid-row::-webkit-scrollbar { display: none; }
+.tile-grid-row.is-dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;  /* disable snap while actively dragging */
+}
+/* Loop rows use a translate3d track instead of scrollLeft. The row
+   becomes a pure overflow:hidden viewport; the inner .tile-grid-track
+   holds 3 copies of the tiles concatenated and gets transform updates
+   from survey.js. Wrapping by exactly originalContentWidth is invisible
+   because the 3 copies are identical. No mask, no scrollbar — there
+   are no "edges" in an infinite carousel.
+
+   IMPORTANT: display:block overrides the parent's `display:flex` +
+   `justify-content:center`. Without this override, the track (a single
+   flex child wider than the row) gets centered, which shoves Copy2
+   off-screen to the left and the row appears empty. */
+.tile-grid-row.is-loop {
+  display: block;
+  scroll-snap-type: none;
+  /* overflow-x:clip pairs with overflow-y:visible (overflow:hidden
+     would force the y-axis to auto, clipping the hover lift+scale
+     at the top/bottom). clip is the strict-no-paint variant that
+     doesn't promote the cross axis. */
+  overflow-x: clip;
+  overflow-y: visible;
+  /* Edge-fade is now drawn by .tile-grid-rowframe's overlays — see
+     the rowframe block below. The row itself just clips overflow. */
+  /* The row no longer scrolls — the track moves via transform. */
+  cursor: grab;
+}
+.tile-grid-row.is-loop.is-dragging {
+  cursor: grabbing;
+}
+.tile-grid-row.is-loop .tile {
+  scroll-snap-align: none;
+}
+/* ── Section-tinted edge glow ─────────────────────────────────
+   Each row sits in .tile-grid-rowframe with two layered overlays:
+
+   ::before / ::after — the gradient fade itself (page-bg blended
+   with arch-accent at the edge, transparent inward). These are
+   what hide the half-clipped wrap tiles.
+
+   .glow-l / .glow-r (DOM children, added at render time) — a
+   second blurred layer that radiates the accent color outward
+   from the edge as a soft halo. They're stacked behind the fade
+   so the haze you see is "fade in front, glow behind" — the edge
+   reads as a luminous colored gate rather than a flat tint.
+
+   --motion-dir is written by JS (-1 / 0 / +1) during drift/drag
+   so the LEADING edge brightens and intensifies its glow while
+   the trailing edge dims. Subtle directional cue. */
+.tile-grid-rowframe {
+  position: relative;
+  --motion-dir: 0;
+  /* isolation: isolate creates a compositing group so plus-lighter
+     on the inner .row-glow blends within this box, against the
+     tiles + fade gradients beneath. Without isolation the blend
+     was flattening too early in the parent stack. */
+  isolation: isolate;
+}
+.tile-grid-rowframe::before,
+.tile-grid-rowframe::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100px;
+  pointer-events: none;
+  /* Fade overlays sit BELOW the glow now (z-index 3) so the
+     plus-lighter glow at z-index 5 lights them up too — turning
+     the darkened tint into a luminous gate instead of obscuring
+     the glow with the dark fade color. */
+  z-index: 3;
+  transition: opacity 220ms ease, filter 220ms ease;
+}
+.tile-grid-rowframe::before {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--arch-accent, var(--accent)) 38%, var(--bg)) 0%,
+    color-mix(in srgb, var(--arch-accent, var(--accent)) 20%, rgba(20, 16, 13, 0.88)) 28%,
+    color-mix(in srgb, var(--arch-accent, var(--accent)) 8%, transparent) 65%,
+    transparent 100%
+  );
+  /* motion-dir = +1 (drag-right, content emerges from left): brighten left */
+  /* motion-dir = -1 (drift / drag-left, content exits to left): dim left */
+  opacity: calc(0.85 + var(--motion-dir, 0) * 0.18);
+  filter: saturate(calc(1 + var(--motion-dir, 0) * 0.4));
+}
+.tile-grid-rowframe::after {
+  right: 0;
+  background: linear-gradient(
+    to left,
+    color-mix(in srgb, var(--arch-accent, var(--accent)) 38%, var(--bg)) 0%,
+    color-mix(in srgb, var(--arch-accent, var(--accent)) 20%, rgba(20, 16, 13, 0.88)) 28%,
+    color-mix(in srgb, var(--arch-accent, var(--accent)) 8%, transparent) 65%,
+    transparent 100%
+  );
+  opacity: calc(0.85 - var(--motion-dir, 0) * 0.18);
+  filter: saturate(calc(1 - var(--motion-dir, 0) * 0.4));
+}
+
+/* Glow layer — a thick blurred bar of the accent color sits just
+   inside the fade, lighting up the edge with an additive (plus-
+   lighter) blend. plus-lighter literally SUMS RGB channels with
+   the layers behind, so the glow brightens whatever's underneath
+   instead of painting over it. The 28px blur diffuses the bar so
+   the result reads as a luminous gate rather than a colored stripe.
+   Lower base opacity than screen-blend would need (plus-lighter
+   adds aggressively, so we tone the source down). */
+.tile-grid-rowframe .row-glow {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 90px;
+  pointer-events: none;
+  /* On top of the fade overlay (z-index 3) so plus-lighter
+     additively brightens both the dark fade gradient and the
+     tile content beneath. Result: a luminous gate. */
+  z-index: 5;
+  border-radius: 120px;
+  filter: blur(26px);
+  mix-blend-mode: plus-lighter;
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+.tile-grid-rowframe .row-glow.row-glow-l {
+  left: -20px;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--arch-accent, var(--accent)) 75%, transparent) 0%,
+    color-mix(in srgb, var(--arch-accent, var(--accent)) 35%, transparent) 55%,
+    transparent 100%
+  );
+  opacity: calc(0.65 + var(--motion-dir, 0) * 0.30);
+  transform: translateX(calc(var(--motion-dir, 0) * 10px));
+}
+.tile-grid-rowframe .row-glow.row-glow-r {
+  right: -20px;
+  background: linear-gradient(
+    to left,
+    color-mix(in srgb, var(--arch-accent, var(--accent)) 75%, transparent) 0%,
+    color-mix(in srgb, var(--arch-accent, var(--accent)) 35%, transparent) 55%,
+    transparent 100%
+  );
+  opacity: calc(0.65 - var(--motion-dir, 0) * 0.30);
+  transform: translateX(calc(var(--motion-dir, 0) * -10px));
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile-grid-rowframe::before,
+  .tile-grid-rowframe::after,
+  .tile-grid-rowframe .row-glow {
+    transition: none;
+    transform: none;
+  }
+}
+
+.tile-grid-track {
+  /* width: max-content makes the track size to its content's natural
+     width (sum of tile widths + gaps), preventing flex shrink in any
+     ancestor from collapsing it. */
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12px;
+  width: max-content;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+}
+.tile-grid-row.is-dragging .tile {
+  pointer-events: none;  /* drag should NEVER trigger a tile click */
+}
+
+/* Slim progress track below each row — replaces the chunky webkit
+   scrollbar. Fill width = scrollLeft / (scrollWidth - clientWidth).
+   Sits within the section so it scrolls with the archetype, not
+   stuck to the viewport. */
+.tile-grid-progress {
+  position: relative;
+  margin: 0 18px 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 1.5px;
+  overflow: hidden;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+.tile-grid-section:hover .tile-grid-progress { opacity: 1; }
+.tile-grid-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0;
+  background: var(--arch-accent, var(--accent));
+  border-radius: 1.5px;
+  /* No transition — fill follows scroll directly for 1:1 feedback. */
+}
+.tile-grid-empty {
+  grid-column: 1 / -1;
+  padding: 32px;
+  text-align: center;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ── Tile ──────────────────────────────────────────────────────
+   Hover combines lift + scale + brightness + 3D tilt. The tilt is
+   driven by JS — survey.js sets --tilt-x and --tilt-y CSS vars
+   from cursor position, and the transform composes them with the
+   hover translate/scale. is-tilting class shortens the transform
+   transition so rotation tracks the cursor responsively without
+   feeling laggy. Default 320ms transition is for the smooth return
+   when the cursor leaves the tile. */
+.tile {
+  /* Tile = cover. Title now overlays the bottom of the cover via a
+     gradient fade, so we don't pay for a separate text strip below.
+     The whole tile carries the 5/7 aspect; cover and title both
+     position absolutely inside it. Sized to track the viewport so
+     wide screens get bigger thumbnails (clamp ceiling lets each
+     tile hit ~260px on a 1920p display). */
+  flex: 0 0 clamp(170px, 16vw, 260px);
+  aspect-ratio: 5 / 7;
+  scroll-snap-align: start;
+  position: relative;
+  display: block;
+  cursor: pointer;
+  background: var(--bg-card);
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  user-select: none;
+  /* Tilt-aware composed transform. Defaults are zero so non-hovered
+     tiles render normally. perspective() gives the rotation depth. */
+  transform:
+    perspective(900px)
+    rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg))
+    translateY(0)
+    scale(1);
+  transform-style: preserve-3d;
+  transition:
+    border-color 200ms ease,
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 240ms ease,
+    filter 220ms ease;
+  /* Resting shadow: subtle floor-lift so tiles read as cards. */
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.tile:hover {
+  border-color: color-mix(in srgb, var(--arch-accent, var(--accent)) 50%, transparent);
+  transform:
+    perspective(900px)
+    rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg))
+    translateY(-3px)
+    scale(1.03);
+  filter: brightness(1.07);
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.55),
+    0 4px 10px rgba(0, 0, 0, 0.35),
+    0 0 0 1px color-mix(in srgb, var(--arch-accent, var(--accent)) 22%, transparent);
+}
+/* Active tilt: shorter transform transition so rotation feels live. */
+.tile.is-tilting {
+  transition:
+    border-color 200ms ease,
+    transform 90ms ease-out,
+    box-shadow 240ms ease,
+    filter 220ms ease;
+}
+.tile:active {
+  transform:
+    perspective(900px)
+    rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg))
+    translateY(-1px)
+    scale(1.01);
+  transition: transform 90ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile,
+  .tile:hover,
+  .tile:active,
+  .tile.is-tilting {
+    transform: none;
+    transition: border-color 200ms ease, box-shadow 240ms ease, filter 220ms ease;
+  }
+}
+.tile-cover {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #2a2420 0%, #14100d 100%);
+  background-size: cover;
+  background-position: center;
+}
+/* Bottom-fade scrim so the overlaid title stays legible against
+   busy cover art. Stronger at the very bottom, transparent at top. */
+.tile-cover::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 56%;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.86) 0%,
+    rgba(0, 0, 0, 0.55) 35%,
+    rgba(0, 0, 0, 0.18) 70%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+  transition: opacity 220ms ease;
+}
+.tile-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  padding: 6px 10px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.1px;
+  color: var(--fg);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  transition: font-size 200ms ease, padding 200ms ease;
+}
+/* On hover, the title lifts in size and the scrim deepens so the
+   highlighted tile reads like the user is leaning toward it. */
+.tile:hover .tile-title {
+  font-size: 12.5px;
+  padding-bottom: 10px;
+}
+.tile:hover .tile-cover::after {
+  opacity: 1.05;
+}
+
+/* Tile state badges — overlay on the cover, top-right corner */
+.tile-state-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+.tile.state-loved {
+  border-color: var(--loved-border);
+  box-shadow:
+    0 0 0 1px var(--loved-border),
+    0 4px 18px rgba(255, 79, 138, 0.28),
+    0 1px 4px rgba(255, 79, 138, 0.18);
+}
+.tile.state-loved:hover {
+  border-color: var(--loved);
+  box-shadow:
+    0 0 0 1px var(--loved),
+    0 16px 36px rgba(255, 79, 138, 0.42),
+    0 4px 10px rgba(255, 79, 138, 0.25);
+}
+.tile.state-loved .tile-state-badge {
+  display: flex;
+  background: var(--loved);
+  color: #fff;
+}
+.tile.state-disliked {
+  border-color: var(--disliked-border);
+  opacity: 0.6;
+}
+.tile.state-disliked .tile-cover {
+  filter: grayscale(0.7);
+}
+.tile.state-disliked .tile-state-badge {
+  display: flex;
+  background: var(--disliked);
+  color: #fff;
+}
+
+/* ── Summary screen ──────────────────────────────────────────── */
+.summary-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 36px 24px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  margin-top: 12px;
+}
+.summary-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+.summary-subtitle {
+  margin: 0;
+  color: var(--muted);
+  text-align: center;
+  max-width: 680px;
+}
+.summary-cards {
+  width: 100%;
+  /* auto-fit (vs auto-fill) collapses unused tracks so 4 cards
+     spread to fill 4 columns instead of leaving an empty slot
+     on the right. Capping the container width + auto-margin
+     centers the row within a wider summary-screen. */
+  max-width: 1100px;
+  margin: 8px auto 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  justify-content: center;
+}
+.summary-card {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.summary-card-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted-strong);
+}
+.summary-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+.summary-list-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--line);
+}
+.summary-list-item:last-child { border-bottom: none; }
+.summary-list-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.summary-list-weight {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+.summary-confidence .confidence-readout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.confidence-readout-label {
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.confidence-readout-label.confidence-low { color: var(--confidence-low); }
+.confidence-readout-label.confidence-mid { color: var(--confidence-mid); }
+.confidence-readout-label.confidence-high { color: var(--confidence-high); }
+.confidence-readout-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+/* Pending-taps notice — surfaces when the worker couldn't fold some
+   taps because their AniList Media hadn't loaded. Auto-recomputes
+   in the background when the data arrives, so this notice is
+   informational, not actionable. */
+.summary-pending {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  max-width: 720px;
+  margin: 8px auto 0;
+  padding: 12px 16px;
+  background: rgba(217, 135, 78, 0.08);
+  border: 1px solid rgba(217, 135, 78, 0.30);
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--muted-strong);
+}
+.summary-pending[hidden] { display: none; }
+.summary-pending-icon {
+  font-size: 18px;
+  line-height: 1.2;
+  flex: 0 0 auto;
+}
+.summary-pending-text {
+  flex: 1;
+  line-height: 1.5;
+}
+.summary-pending-text strong {
+  color: var(--confidence-low);
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+/* Tap-effect surface — friend-voice voiceback per tapped tag.
+   Mirrors summary-pending shape but with status-color tinting:
+   fired-with-candidates → green-tinted (it worked)
+   fired-no-candidates   → orange-tinted (architectural gap)
+   noop-*                → muted neutral (redundant or thin) */
+.summary-tap-effects {
+  width: 100%;
+  max-width: 720px;
+  margin: 8px auto 0;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--muted-strong);
+}
+.summary-tap-effects[hidden] { display: none; }
+.tap-effects-heading {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.55;
+  margin-bottom: 8px;
+}
+.tap-effect-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  margin: 4px 0;
+  border-radius: 8px;
+  line-height: 1.5;
+}
+.tap-effect-fired-with-candidates {
+  background: rgba(125, 220, 141, 0.08);
+  border-left: 3px solid rgba(125, 220, 141, 0.55);
+}
+.tap-effect-fired-no-candidates {
+  background: rgba(255, 140, 40, 0.08);
+  border-left: 3px solid rgba(255, 140, 40, 0.55);
+}
+.tap-effect-noop-behavior-stronger,
+.tap-effect-noop-thin-vector {
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 3px solid rgba(255, 255, 255, 0.18);
+  opacity: 0.78;
+}
+.tap-effect-status {
+  flex: 0 0 auto;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.2;
+  width: 14px;
+  text-align: center;
+}
+.tap-effect-fired-with-candidates .tap-effect-status { color: #7DDC8D; }
+.tap-effect-fired-no-candidates .tap-effect-status { color: #FF8C28; }
+.tap-effect-text { flex: 1; }
+.tap-effect-text strong { color: #fff; font-weight: 700; }
+.tap-effect-cta-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: 0.6;
+  font-style: italic;
+}
+
+/* Seed-from-AniList CTA — only renders on fired-no-candidates rows. */
+.tap-effect-seed-btn {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 5px 11px;
+  border: 1px solid rgba(255, 140, 40, 0.55);
+  border-radius: 6px;
+  background: rgba(255, 140, 40, 0.12);
+  color: #FF8C28;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.tap-effect-seed-btn:hover:not(:disabled) {
+  background: rgba(255, 140, 40, 0.20);
+  border-color: rgba(255, 140, 40, 0.80);
+}
+.tap-effect-seed-btn:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+.tap-effect-seed-btn--ok {
+  background: rgba(125, 220, 141, 0.15);
+  border-color: rgba(125, 220, 141, 0.55);
+  color: #7DDC8D;
+}
+.tap-effect-seed-btn--err {
+  background: rgba(255, 90, 90, 0.12);
+  border-color: rgba(255, 90, 90, 0.45);
+  color: #FF6A6A;
+}
+
+.summary-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+.summary-btn-primary,
+.summary-btn-secondary {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.summary-btn-primary {
+  background: var(--accent);
+  color: #14100d;
+  border: 1px solid var(--accent);
+}
+.summary-btn-primary:hover { background: #ffa14e; }
+.summary-btn-secondary {
+  background: transparent;
+  color: var(--muted-strong);
+  border: 1px solid var(--line);
+}
+.summary-btn-secondary:hover {
+  background: var(--bg-card);
+  color: var(--fg);
+}
+
+/* Tertiary "or just close this tab" link below the primary action.
+   Visually quieter than .summary-btn-secondary so the friend's eye
+   lands on Open Smart Picks first. */
+.summary-actions-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+.summary-link-secondary {
+  background: transparent;
+  border: 0;
+  color: var(--muted, #aaa);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 8px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.summary-link-secondary:hover { color: var(--fg, #fff); }
+
+/* ── Top-3 picks preview on summary screen ────────────────────
+   The celebration moment: three real recs the engine produced
+   from the user's taps. Each row is a clickable link to CR. */
+.summary-top-picks {
+  margin: 18px 0;
+  padding: 16px;
+  background: rgba(255, 140, 40, 0.05);
+  border: 1px solid rgba(255, 140, 40, 0.18);
+  border-radius: 10px;
+}
+.summary-top-picks[hidden] { display: none; }
+.summary-top-picks .summary-card-title {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: var(--accent);
+}
+.summary-picks-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.summary-pick {
+  display: block;
+}
+.summary-pick-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.summary-pick-link:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 140, 40, 0.4);
+}
+.summary-pick-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+.summary-pick-score {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.summary-picks-foot {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--muted, #aaa);
+}
+
+/* Spread feedback — sits above the picks list. Three flavors keyed
+   by gap magnitude: strong (≥25pt), decent (12-24pt), tight (<12pt).
+   Same chrome, color shifts so the eye can read severity at a glance. */
+.summary-spread {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  border-radius: 6px;
+  border-left: 3px solid var(--line, rgba(255,255,255,0.15));
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text, #f0e8df);
+}
+.summary-spread.spread-strong {
+  border-left-color: rgba(60, 200, 120, 0.7);
+  background: rgba(60, 200, 120, 0.06);
+}
+.summary-spread.spread-decent {
+  border-left-color: rgba(255, 140, 40, 0.7);
+  background: rgba(255, 140, 40, 0.06);
+}
+.summary-spread.spread-tight {
+  border-left-color: rgba(255, 200, 80, 0.7);
+  background: rgba(255, 200, 80, 0.06);
+  color: var(--muted, #cfc8b8);
+}
+.summary-spread[hidden] { display: none; }
+
+/* ── Streaming service filter (Shows mode only) ──────────────
+   Multi-select pill row above the Mainstream/All/Deep Cuts switcher.
+   Each pill carries its own --service-color CSS var (set inline by
+   survey.js from STREAMING_SERVICES); active state draws the brand
+   color as background + glow halo so the filter is visually obvious.
+   "All Services" pill has no brand color — uses the neutral accent. */
+.service-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.service-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: transparent;
+  color: var(--muted-strong);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.2s ease;
+}
+.service-btn:hover {
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.04);
+}
+.service-btn-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--service-color, var(--muted));
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
+}
+/* Active state: brand-colored fill + halo glow.
+   Falls back to accent color for the "All Services" pill (no var set). */
+.service-btn.is-active {
+  background: var(--service-color, var(--accent));
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.55),
+    0 0 14px 2px var(--service-color, var(--accent-strong));
+}
+.service-btn.is-active .service-btn-dot {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) inset;
+}
+/* "All Services" never shows a colored dot — keep it neutral. */
+.service-btn[data-service="all"] .service-btn-dot {
+  display: none;
+}
+
+/* Corner service badge — sits at top-left of the cover, opposite
+   the state badge. One colored dot per streaming service this show
+   is on; multi-service tiles stack 2-3 dots horizontally and
+   overflow with a "+N" label. The badge's pill background gives
+   the dots contrast against busy cover art. */
+.tile-service-badge {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 5px;
+  background: rgba(20, 16, 13, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.tile-service-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--service-color, var(--muted));
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
+}
+.tile-service-more {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: var(--muted-strong);
+  padding-left: 1px;
+}
+
+/* Tier badge — only renders in the "All" view, where it tags
+   tier ≤ 5 (TOP 5) or tier ≥ 9 (RARE) tiles so the user can spot
+   popular picks vs. deep cuts at a glance. Sits at bottom-left
+   above the title scrim, with a slight gold/teal aura. */
+.tile-tier-badge {
+  position: absolute;
+  left: 7px;
+  bottom: 28px;
+  z-index: 3;
+  padding: 2px 7px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  border-radius: 4px;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.tile-tier-badge.tier-top {
+  background: linear-gradient(135deg, #f7c948 0%, #d99a1c 100%);
+  color: #2a1a05;
+  border: 1px solid rgba(255, 255, 255, 0.30);
+}
+.tile-tier-badge.tier-rare {
+  background: linear-gradient(135deg, #5fd5c4 0%, #2caab1 100%);
+  color: #062b2a;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+/* On hover, the title pads up by 2px — push the tier badge with
+   it so they don't end up overlapping. */
+.tile:hover .tile-tier-badge { bottom: 30px; }
+
+/* ── Loading skeleton (tiles whose media hasn't landed yet) ──
+   The bridge cache fills async; until a tile's media lands, the cover
+   shows a dark gradient with no image. Without the shimmer it looks
+   broken — with it, the empty state reads as "still loading".
+   storage.onChanged re-renders the tile when media arrives, dropping
+   the .is-loading class naturally. */
+.tile.is-loading .tile-cover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 45%,
+    rgba(255, 255, 255, 0.10) 50%,
+    rgba(255, 255, 255, 0.05) 55%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: tile-shimmer 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+.tile.is-loading .tile-title {
+  color: var(--muted);
+  font-style: italic;
+}
+@keyframes tile-shimmer {
+  0%   { background-position: 150% 0; }
+  100% { background-position: -50% 0; }
+}
+/* Respect reduced-motion preferences — replace shimmer with a static
+   dimmed overlay so the tile still reads as "loading" without animation. */
+@media (prefers-reduced-motion: reduce) {
+  .tile.is-loading .tile-cover::before {
+    animation: none;
+    background: rgba(255, 255, 255, 0.04);
+    background-size: auto;
+  }
+}
+
+/* ── First-visit onboarding banner ────────────────────────────
+   Shown when tapCount() === 0 AND user hasn't persistent-dismissed.
+   Auto-fades when the first tap registers. Manual dismiss persists
+   across reloads (chrome.storage.local.surveyOnboardingDismissed). */
+.onboarding-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 140, 40, 0.16) 0%,
+    rgba(255, 79, 138, 0.08) 100%
+  );
+  border: 1px solid var(--accent-strong);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--fg);
+  animation: onboarding-fade-in 420ms ease-out;
+}
+.onboarding-banner[hidden] { display: none; }
+.onboarding-banner.is-fading {
+  animation: onboarding-fade-out 380ms ease-in forwards;
+  pointer-events: none;
+}
+.onboarding-icon {
+  font-size: 24px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+.onboarding-text {
+  flex: 1;
+  line-height: 1.5;
+}
+.onboarding-text strong {
+  color: var(--accent);
+  margin-right: 6px;
+  font-weight: 700;
+}
+.onboarding-dismiss {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted-strong);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 18px;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+.onboarding-dismiss:hover {
+  background: var(--bg-card);
+  color: var(--fg);
+  border-color: var(--accent-strong);
+}
+.onboarding-dismiss:active {
+  transform: scale(0.92);
+}
+@keyframes onboarding-fade-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes onboarding-fade-out {
+  from { opacity: 1; transform: translateY(0); max-height: 100px; }
+  to   { opacity: 0; transform: translateY(-6px); max-height: 0; padding-top: 0; padding-bottom: 0; margin-bottom: -16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-banner,
+  .onboarding-banner.is-fading { animation: none; }
+}
+
+/* ── Live taste-shape preview ─────────────────────────────────
+   Compact horizontal panel that surfaces the user's top archetypes
+   (Shows mode) or top tags (Genres mode) live. Pills carry a
+   proportional gradient fill where the top-scored item fills 100%
+   and others scale down by ratio. Pulses on the pill whose
+   archetype/tag just changed. */
+.taste-shape {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 12px;
+  min-height: 44px;
+  align-self: stretch;
+}
+.taste-shape-label {
+  flex: 0 0 auto;
+  color: var(--muted-strong);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+.taste-shape-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+  align-items: center;
+}
+.taste-shape-empty {
+  color: var(--muted);
+  font-style: italic;
+  font-size: 12px;
+}
+.shape-pill {
+  --fill: 0%;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px 5px 11px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 79, 138, 0.22) 0%,
+    rgba(255, 79, 138, 0.22) var(--fill),
+    rgba(255, 79, 138, 0.05) var(--fill),
+    rgba(255, 79, 138, 0.05) 100%
+  );
+  border: 1px solid rgba(255, 79, 138, 0.42);
+  color: var(--fg);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  transition: background 0.25s ease, border-color 0.25s ease;
+  white-space: nowrap;
+}
+.shape-pill-name {
+  font-weight: 600;
+}
+.shape-pill-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  background: rgba(255, 79, 138, 0.55);
+  color: #fff;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.shape-pill.is-pulsing {
+  animation: shape-pill-pulse 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes shape-pill-pulse {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(255, 79, 138, 0.55); }
+  35%  { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(255, 79, 138, 0); }
+  100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(255, 79, 138, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shape-pill.is-pulsing { animation: none; }
+}
+
+/* ── Taste sidebar (wide viewports) ─────────────────────────
+   Fixed-position panel on the right edge. The .taste-sidebar element
+   is hidden by default; survey.js shows it (and hides the inline
+   .taste-shape panel) once the viewport hits the desktop breakpoint.
+   Pills inside are vertical full-width rows so the panel reads as a
+   ranked taste readout rather than a chip cloud. */
+.taste-sidebar {
+  display: none;
+  position: fixed;
+  top: calc(var(--header-stick, 96px) + 14px);
+  right: 18px;
+  width: 308px;
+  max-height: calc(100vh - var(--header-stick, 96px) - 32px);
+  z-index: 5;
+  /* 20px inset gives the pulse halo room to bloom on each side
+     before hitting the panel edge, so tap-pulse rings don't get
+     clipped. */
+  padding: 18px 20px 16px;
+  background: rgba(28, 23, 20, 0.92);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 140, 40, 0.04) inset;
+  overflow: hidden;
+  transition: opacity 240ms ease, transform 240ms cubic-bezier(0.32, 0.72, 0.28, 1);
+}
+.taste-sidebar[hidden] { display: none; }
+.taste-sidebar-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.taste-sidebar-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+.taste-sidebar-count {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.taste-sidebar-pills {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-wrap: nowrap;
+  /* overflow:visible so the tap-pulse halo (box-shadow ring) and
+     scale transform aren't clipped at the container's edges. The
+     sidebar's own overflow:hidden + 20px padding keep things
+     contained at the panel boundary; we shouldn't need scrolling
+     here since pills are capped at 8 by renderTasteShape. */
+  overflow: visible;
+  padding: 0;
+}
+.taste-sidebar-pills .shape-pill {
+  /* Full-width row variant — name on the left, count on the right.
+     Uses the per-archetype accent (set inline by renderTasteShape)
+     for the fill bar and border, so each row reads as colored
+     progress in its own hue rather than the global pink. */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  /* min-width:0 lets the inner name flex-shrink + ellipsize within
+     the pill instead of pushing the pill wider than the container. */
+  min-width: 0;
+  padding: 10px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  border-color: color-mix(in srgb, var(--pill-accent, var(--loved)) 38%, transparent);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--pill-accent, var(--loved)) 22%, transparent) 0%,
+    color-mix(in srgb, var(--pill-accent, var(--loved)) 22%, transparent) var(--fill, 0%),
+    rgba(255, 255, 255, 0.04) var(--fill, 0%),
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  transition: background 0.25s ease, border-color 0.25s ease, transform 0.1s ease;
+}
+/* Truncate long archetype names instead of overflowing the pill. */
+.taste-sidebar-pills .shape-pill .shape-pill-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.taste-sidebar-pills .shape-pill .shape-pill-count {
+  flex: 0 0 auto;
+}
+.taste-sidebar-pills .shape-pill:hover {
+  border-color: color-mix(in srgb, var(--pill-accent, var(--loved)) 70%, transparent);
+  transform: translateX(2px);
+}
+.taste-sidebar-pills .shape-pill .shape-pill-count {
+  background: color-mix(in srgb, var(--pill-accent, var(--loved)) 65%, #14100d);
+}
+.taste-sidebar-pills .taste-shape-empty {
+  padding: 8px 4px;
+  font-size: 12px;
+  text-align: left;
+}
+.taste-sidebar.is-pulsing {
+  animation: sidebar-pulse 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes sidebar-pulse {
+  0%   { box-shadow: 0 12px 30px rgba(0,0,0,0.55), 0 0 0 0 rgba(255,140,40,0.0); }
+  35%  { box-shadow: 0 12px 30px rgba(0,0,0,0.55), 0 0 0 4px rgba(255,140,40,0.20); }
+  100% { box-shadow: 0 12px 30px rgba(0,0,0,0.55), 0 0 0 0 rgba(255,140,40,0.0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .taste-sidebar.is-pulsing { animation: none; }
+  .taste-sidebar-pills .shape-pill:hover { transform: none; }
+}
+
+/* Wide viewport: show the sidebar. The sidebar uses position:fixed
+   so it doesn't claim layout space — the .survey-app centers in the
+   full viewport via the calc-based max-width above, and a 40px
+   buffer in that calc keeps centered content from colliding with
+   the sidebar's footprint. */
+@media (min-width: 1280px) {
+  .taste-sidebar:not([hidden]) { display: flex; flex-direction: column; }
+  /* Inline taste-shape becomes redundant when the sidebar is up. */
+  .taste-shape.is-sidebar-active { display: none; }
+}
+
+/* ── Tap-feedback bursts (love-heart, dislike-X) ─────────────
+   Spawned on tile by survey.js when state transitions TO loved or
+   disliked. Self-cleanup via animationend listener. Pure visual —
+   pointer-events:none so they don't block subsequent taps. */
+.tile-burst-heart,
+.tile-burst-x {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 10;
+  pointer-events: none;
+  font-weight: 700;
+  /* Set a default initial transform so first paint isn't centered+full-size */
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+}
+.tile-burst-heart {
+  font-size: 64px;
+  color: var(--loved);
+  text-shadow:
+    0 0 12px rgba(255, 79, 138, 0.65),
+    0 0 24px rgba(255, 79, 138, 0.35);
+  animation: tile-burst-heart 650ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes tile-burst-heart {
+  0%   { transform: translate(-50%, -50%) scale(0)   rotate(-12deg); opacity: 0; }
+  25%  { transform: translate(-50%, -50%) scale(1.5) rotate(8deg);   opacity: 1; }
+  55%  { transform: translate(-50%, -55%) scale(1.2) rotate(-3deg);  opacity: 1; }
+  100% { transform: translate(-50%, -130%) scale(0.7) rotate(0deg);  opacity: 0; }
+}
+
+.tile-burst-x {
+  font-size: 56px;
+  color: var(--disliked);
+  text-shadow:
+    0 0 10px rgba(108, 114, 128, 0.6),
+    0 0 18px rgba(0, 0, 0, 0.5);
+  animation: tile-burst-x 480ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes tile-burst-x {
+  0%   { transform: translate(-50%, -50%) scale(0)   rotate(-30deg); opacity: 0; }
+  35%  { transform: translate(-50%, -50%) scale(1.4) rotate(8deg);   opacity: 1; }
+  70%  { transform: translate(-50%, -50%) scale(1.0) rotate(0deg);   opacity: 0.85; }
+  100% { transform: translate(-50%, -50%) scale(0.85) rotate(0deg);  opacity: 0; }
+}
+
+/* Tap sparks — 8 accent-tinted particles spraying outward from tile
+   center on a love-tap. Each spark consumes --angle, --distance,
+   --size, and --spark-color custom properties set by spawnTapSparks
+   so the spray varies per tap. Position absolute relative to the
+   tile cover; pointer-events:none so sparks don't block follow-up
+   taps. Final transform composes a translate-by-distance along the
+   given angle with a fade + slight upward drift for "ki energy"
+   vibes. Set initial transform so first paint isn't centered+full-size. */
+.tile-tap-spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 9;
+  width: var(--size, 6px);
+  height: var(--size, 6px);
+  border-radius: 50%;
+  background: var(--spark-color, var(--loved));
+  box-shadow: 0 0 6px var(--spark-color, var(--loved));
+  pointer-events: none;
+  transform: translate(-50%, -50%) rotate(var(--angle, 0deg)) translateX(0) scale(0);
+  opacity: 0;
+  animation-name: tile-tap-spark;
+  animation-timing-function: cubic-bezier(0.18, 0.7, 0.32, 1);
+  animation-fill-mode: forwards;
+}
+@keyframes tile-tap-spark {
+  0%   { transform: translate(-50%, -50%) rotate(var(--angle, 0deg)) translateX(0) scale(0.4);
+         opacity: 0; }
+  18%  { transform: translate(-50%, -50%) rotate(var(--angle, 0deg)) translateX(8px) scale(1.05);
+         opacity: 1; }
+  60%  { transform: translate(-50%, -50%) rotate(var(--angle, 0deg)) translateX(calc(var(--distance, 50px) * 0.85)) scale(0.85);
+         opacity: 0.85; }
+  100% { transform: translate(-50%, -50%) rotate(var(--angle, 0deg)) translateX(var(--distance, 50px)) scale(0.2);
+         opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile-tap-spark { display: none; }
+}
+
+/* Quick scale-pop on every tap regardless of next state — gives
+   tactile feedback for the "tap registered" beat before the burst. */
+.tile.is-just-tapped {
+  animation: tile-tap-pop 220ms ease-out;
+}
+@keyframes tile-tap-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.045); }
+  100% { transform: scale(1); }
+}
+
+/* Reduced-motion: cut the bursts entirely (the state badge is enough). */
+@media (prefers-reduced-motion: reduce) {
+  .tile-burst-heart,
+  .tile-burst-x { display: none; }
+  .tile.is-just-tapped { animation: none; }
+}
+
+/* ── Undo button (legend area) ─────────────────────────────────
+   Hidden until the user has tapped at least once this session. Reverts
+   the last tap (show or genre). Disappears after undo or mode switch.
+   Sits to the right of the legend hint. */
+.undo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-card);
+  color: var(--fg);
+  border: 1px solid var(--accent-strong);
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  margin-left: 12px;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+.undo-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.undo-btn:active {
+  transform: scale(0.96);
+}
+.undo-btn[hidden] { display: none; }
+
+/* ── Clear-all-taps button ─────────────────────────────────────
+   Sits next to undo, mode-scoped (clears Shows OR Genres taps in
+   current mode). Hidden when the mode has 0 taps. Tap-to-confirm
+   pattern: first click flips to "tap again to clear N taps" with
+   a pulsing pink halo and 4s revert timeout. Second click wipes. */
+.clear-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-card);
+  color: var(--muted-strong);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  margin-left: 6px;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.1s ease;
+}
+.clear-all-btn:hover {
+  background: var(--bg-elev);
+  border-color: rgba(255, 79, 138, 0.45);
+  color: var(--fg);
+}
+.clear-all-btn:active {
+  transform: scale(0.96);
+}
+.clear-all-btn.is-confirming {
+  background: rgba(255, 79, 138, 0.16);
+  border-color: var(--loved-border);
+  color: var(--loved);
+  animation: clear-confirm-pulse 1.4s ease-in-out infinite;
+}
+@keyframes clear-confirm-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 79, 138, 0); }
+  50%      { box-shadow: 0 0 0 5px rgba(255, 79, 138, 0.18); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .clear-all-btn.is-confirming { animation: none; }
+}
+.clear-all-btn[hidden] { display: none; }
+
+/* ── Responsive: narrow viewport ─────────────────────────────── */
+@media (max-width: 720px) {
+  .survey-app { padding: 14px 14px 18px; }
+  .survey-header { margin: -14px -14px 0; padding: 10px 14px; }
+  .header-titlebar { gap: 12px; }
+  .survey-title { font-size: 16px; }
+  .header-controlbar { gap: 8px; }
+  .header-controlbar .mature-pill { margin-left: 0; }
+  .service-btn { padding: 5px 9px; font-size: 10px; }
+  .view-btn-hint { display: none; }
+  .mode-tab { padding: 6px 12px; font-size: 12px; }
+}
+
+/* ── Studios mode (MVP: data collection only) ───────────────────
+   Flat grid of clickable studio chips. Each chip shows the studio
+   name + your watch count + your loved count. Click cycles state. */
+.studio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  padding: 12px 0 24px;
+}
+.studio-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--card, #1a1a1a);
+  border: 1px solid var(--border, #2a2a2a);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--fg, #f8f8f8);
+  font-size: 12.5px;
+  transition: background 120ms, border-color 120ms;
+}
+.studio-chip:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.studio-chip.state-loved {
+  background: rgba(60, 200, 120, 0.10);
+  border-color: rgba(60, 200, 120, 0.45);
+  color: #a5e8be;
+}
+.studio-chip.state-disliked {
+  background: rgba(200, 80, 80, 0.10);
+  border-color: rgba(200, 80, 80, 0.45);
+  color: #f0a5a5;
+}
+.studio-chip-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+.studio-chip-name {
+  flex: 1 1 auto;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.studio-chip-meta {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  opacity: 0.65;
+  white-space: nowrap;
+}
+.studio-chip.state-loved .studio-chip-meta,
+.studio-chip.state-disliked .studio-chip-meta {
+  opacity: 0.85;
+}

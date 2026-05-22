@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Restore from backup — Smart Scoring</title>
+  <link rel="stylesheet" href="import.css" />
+</head>
+<body>
+  <main class="import-shell">
+    <header class="import-header">
+      <h1>Restore from backup</h1>
+      <p class="muted">
+        Pick a Smart Scoring backup file to inspect what's in it, then choose
+        which buckets to restore. Anything not covered by the file stays as it
+        is on this device.
+      </p>
+    </header>
+
+    <!-- Stage 1: pick a file. Drop zone + native file picker. -->
+    <section class="stage stage-pick" data-stage="pick">
+      <label class="dropzone" id="dropzone">
+        <span class="dropzone-icon" aria-hidden="true">↓</span>
+        <span class="dropzone-prompt">Drop a backup file here</span>
+        <span class="dropzone-or">or</span>
+        <span class="dropzone-button">choose a file…</span>
+        <input type="file" accept=".json,application/json" id="file-input" />
+      </label>
+      <div class="status-line" id="pick-status" aria-live="polite"></div>
+    </section>
+
+    <!-- Stage 2: preview. Schema info + bucket counts + per-bucket overrides. -->
+    <section class="stage stage-preview hidden" data-stage="preview">
+      <div class="card">
+        <header class="card-head">
+          <span class="card-head-title">File contents</span>
+          <button type="button" class="text-btn" id="cancel-btn">cancel</button>
+        </header>
+
+        <dl class="meta-grid">
+          <dt>Schema</dt><dd id="meta-schema">—</dd>
+          <dt>Exported</dt><dd id="meta-exported">—</dd>
+          <dt>Extension</dt><dd id="meta-extension">—</dd>
+          <dt>File size</dt><dd id="meta-size">—</dd>
+        </dl>
+
+        <div class="bucket-overrides" id="bucket-overrides">
+          <!-- Populated by import.js — one row per bucket present in the file. -->
+        </div>
+
+        <div class="recompute-note" id="recompute-note" hidden>
+          <strong>Note:</strong> after restore, scores will recompute in the
+          background (~10s) because the backup doesn't cover all the source
+          data this device has. The instant-restore fast path is only used
+          when the backup covers every source bucket.
+        </div>
+
+        <div class="oauth-note" id="oauth-note" hidden>
+          <strong>This file contains an AniList sign-in credential.</strong>
+          Restoring will sign in this device automatically.
+        </div>
+
+        <div class="action-row">
+          <button type="button" class="btn-primary" id="restore-btn">Restore</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stage 3: working. Brief — single set() is fast. Recompute may take
+         longer; we leave this stage on while it runs. -->
+    <section class="stage stage-working hidden" data-stage="working">
+      <div class="working-spinner" aria-hidden="true"></div>
+      <div class="working-status" id="working-status">Restoring…</div>
+    </section>
+
+    <!-- Stage 4: done. Summary + close-tab affordance. -->
+    <section class="stage stage-done hidden" data-stage="done">
+      <div class="card">
+        <header class="card-head">
+          <span class="card-head-title">✓ Restored</span>
+        </header>
+        <div class="restore-summary" id="restore-summary"></div>
+        <div class="action-row">
+          <button type="button" class="btn-primary" id="close-tab-btn">Close tab</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stage 5: error. Schema-too-new, invalid JSON, atomic-write failure. -->
+    <section class="stage stage-error hidden" data-stage="error">
+      <div class="card card-error">
+        <header class="card-head">
+          <span class="card-head-title">✗ Couldn't restore</span>
+        </header>
+        <div class="error-message" id="error-message"></div>
+        <div class="action-row">
+          <button type="button" class="btn-primary" id="error-retry-btn">Pick another file</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="backup-schema.js"></script>
+  <script src="import.js"></script>
+</body>
+</html>

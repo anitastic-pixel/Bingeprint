@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Quick Taste Check · Crunchyroll Smart Scoring</title>
+  <link rel="stylesheet" href="survey.css">
+</head>
+<body>
+  <!-- Top-of-page indeterminate progress bar. Shown by JS while
+       any apply path is in flight (Done — apply, Refine my taste,
+       Done — close this tab) so the user sees the engine working
+       through their taps instead of staring at a frozen UI. -->
+  <div class="apply-progress" id="apply-progress" hidden aria-hidden="true">
+    <div class="apply-progress-bar"></div>
+  </div>
+
+  <!-- Drifting bokeh orbs — six oversized soft-blurred colored
+       circles on a fixed-position layer behind the page content.
+       Adds ambient depth without committing to a specific theme.
+       Hidden under prefers-reduced-motion via CSS. -->
+  <div class="background-orbs" aria-hidden="true">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+    <span class="orb orb-4"></span>
+    <span class="orb orb-5"></span>
+    <span class="orb orb-6"></span>
+  </div>
+
+  <!-- Fixed taste-shape sidebar — renders alongside the main column
+       on wide viewports so the user sees their shape forming without
+       scrolling. Hidden under 1280px; the inline .taste-shape panel
+       below the legend covers narrow viewports instead. Pills are
+       clickable in Shows mode to smooth-scroll to that archetype. -->
+  <aside class="taste-sidebar" id="taste-sidebar" aria-label="Your taste shape" hidden>
+    <div class="taste-sidebar-head">
+      <span class="taste-sidebar-title" id="taste-sidebar-title">Your taste so far</span>
+      <span class="taste-sidebar-count" id="taste-sidebar-count">0 taps</span>
+    </div>
+    <div class="taste-shape-pills taste-sidebar-pills" id="taste-sidebar-pills" data-shape-target="sidebar">
+      <span class="taste-shape-empty">tap a show you love to start →</span>
+    </div>
+  </aside>
+
+  <div class="survey-app">
+    <!-- 3-step funnel strip — orients new users so the survey reads
+         as step 2/3, not a standalone destination. Steps mark
+         themselves done from welcome-progress / surveyShapes:
+           1. Welcome     — always done by the time we're rendering survey
+           2. Build taste — done when ≥1 tap landed
+           3. See picks   — done when user clicks "View my taste shape" -->
+    <ol class="onboarding-funnel" aria-label="Setup progress">
+      <li class="funnel-step is-done" data-step="welcome">
+        <span class="funnel-dot"></span>
+        <span class="funnel-label">Welcome</span>
+      </li>
+      <li class="funnel-step is-active" data-step="build" id="funnel-step-build">
+        <span class="funnel-dot"></span>
+        <span class="funnel-label">Build taste</span>
+      </li>
+      <li class="funnel-step" data-step="picks" id="funnel-step-picks">
+        <span class="funnel-dot"></span>
+        <span class="funnel-label">See your picks</span>
+      </li>
+    </ol>
+    <header class="survey-header">
+      <!-- Row 1: identity + primary action.
+           Collapses to a slim strip on scroll. -->
+      <div class="header-titlebar">
+        <div class="header-left">
+          <h1 class="survey-title">Quick Taste Check</h1>
+          <p class="survey-subtitle">
+            Tap shows you've loved or disliked. Skip what you haven't seen.
+          </p>
+        </div>
+        <div class="header-right">
+          <div class="confidence-ring" id="confidence-badge" data-level="low" title="Tap more tiles to sharpen your taste shape">
+            <svg class="ring-svg" viewBox="0 0 36 36" aria-hidden="true">
+              <circle class="ring-bg" cx="18" cy="18" r="16"/>
+              <circle class="ring-fill" id="ring-fill" cx="18" cy="18" r="16"/>
+            </svg>
+            <span class="ring-count" id="confidence-count">0</span>
+            <span class="ring-label" id="confidence-label">tap to start</span>
+          </div>
+          <button class="done-btn" id="done-btn" title="Apply your taps and see your taste shape">
+            View my taste shape →
+          </button>
+        </div>
+      </div>
+
+      <!-- Row 2: all controls in a single sticky bar.
+           Service-filter + view-switcher are shown only in Shows mode
+           (toggled by survey.js when setMode runs). -->
+      <div class="header-controlbar">
+        <div class="mode-tabs" role="tablist" aria-label="Survey mode">
+          <button class="mode-tab is-active" data-mode="shows" role="tab" aria-selected="true">
+            Shows
+          </button>
+          <button class="mode-tab" data-mode="genres" role="tab" aria-selected="false">
+            Genres
+          </button>
+          <!-- MVP-CUT (v0.2): Studios mode tab commented out — Studios
+               mode was data-collection only with no engine wiring. The
+               Genres tab above was restored 2026-05-15 (renderGenreGrid
+               and the genre-anchors data are fully wired). survey.js
+               null-guards every querySelector for the Studios tab so
+               nothing crashes when the DOM is absent. To restore Studios:
+               uncomment the button block below and the matching
+               <section data-mode="studios"> block lower in this file. -->
+          <!--
+          <button class="mode-tab" data-mode="studios" role="tab" aria-selected="false">
+            Studios
+          </button>
+          -->
+          <!-- /MVP-CUT (Studios mode tab) -->
+        </div>
+
+        <div class="header-shows-controls" id="header-shows-controls">
+          <div class="service-filter" id="service-filter" aria-label="Filter by streaming service">
+            <!-- Service pills rendered by survey.js from STREAMING_SERVICES. -->
+          </div>
+
+          <div class="view-switcher" role="tablist" aria-label="Pick which shows to see">
+            <button class="view-btn" data-view="mainstream" role="tab">
+              <span class="view-btn-label">Mainstream</span>
+              <span class="view-btn-hint" data-view-hint="mainstream">top 5 · …</span>
+            </button>
+            <button class="view-btn is-active" data-view="all" role="tab" aria-selected="true">
+              <span class="view-btn-label">All</span>
+              <span class="view-btn-hint" data-view-hint="all">all · …</span>
+            </button>
+            <button class="view-btn" data-view="deepcuts" role="tab">
+              <span class="view-btn-label">Deep Cuts</span>
+              <span class="view-btn-hint" data-view-hint="deepcuts">rare · …</span>
+            </button>
+          </div>
+        </div>
+
+        <button class="mature-pill" id="mature-toggle" aria-pressed="false">
+          <span class="mature-pill-dot"></span>
+          <span class="mature-pill-label">Mature: off</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="survey-main" id="survey-main">
+      <!-- First-visit onboarding banner. -->
+      <div class="onboarding-banner" id="onboarding-banner" hidden>
+        <span class="onboarding-icon" aria-hidden="true">👋</span>
+        <div class="onboarding-text">
+          <strong>New here?</strong>
+          Tap a show you love (❤). Tap again to mark it disliked (✕). One more
+          tap cycles back to skip. Your taste shape will appear in real-time below.
+        </div>
+        <button class="onboarding-dismiss" id="onboarding-dismiss" type="button" aria-label="Got it, dismiss this banner">
+          ×
+        </button>
+      </div>
+
+      <div class="legend">
+        <span class="legend-item"><span class="state-icon state-skip"></span>skip</span>
+        <span class="legend-arrow">→</span>
+        <span class="legend-item"><span class="state-icon state-loved">❤</span>loved</span>
+        <span class="legend-arrow">→</span>
+        <span class="legend-item"><span class="state-icon state-disliked">✕</span>disliked</span>
+        <span class="legend-divider" aria-hidden="true"></span>
+        <span class="legend-item" title="One of the top 5 popular picks in this archetype">
+          <span class="legend-tier-pill tier-top">TOP 5</span>
+          popular pick
+        </span>
+        <span class="legend-item" title="A deep-cut pick — fewer fans, sharper signal">
+          <span class="legend-tier-pill tier-rare">RARE</span>
+          deep cut
+        </span>
+        <span class="legend-hint">tap a tile to cycle</span>
+        <button class="undo-btn" id="undo-btn" hidden title="Undo last tap (Ctrl+Z)">
+          ↶ undo last tap
+        </button>
+        <button class="clear-all-btn" id="clear-all-btn" hidden title="Clear all your taps in this mode">
+          ↺ clear all
+        </button>
+      </div>
+
+      <!-- Live taste-shape preview — top archetypes (Shows mode) or
+           tags (Genres mode), updates after every tap. On wide
+           viewports this panel hides and the fixed .taste-sidebar
+           below takes over. -->
+      <div class="taste-shape" id="taste-shape" aria-live="polite">
+        <span class="taste-shape-label" id="taste-shape-label">Leaning toward:</span>
+        <div class="taste-shape-pills" id="taste-shape-pills" data-shape-target="inline">
+          <span class="taste-shape-empty">tap a show you love to see your shape take form →</span>
+        </div>
+      </div>
+
+      <!-- Shows mode -->
+      <section class="tab-content" data-mode="shows">
+        <div class="tile-grid" id="tile-grid">
+          <!-- Tiles rendered by survey.js -->
+          <div class="tile-grid-empty" id="tile-grid-empty">
+            Loading shows…
+          </div>
+        </div>
+      </section>
+
+      <!-- Genres mode — restored 2026-05-15. renderGenreGrid() in
+           survey.js paints tiles from survey-genre-anchors.js into
+           #genre-grid. Cover art is illustrative; each tile represents
+           one show within the tag, not an endorsement of every entry. -->
+      <section class="tab-content" data-mode="genres" hidden>
+        <p class="genre-disclaimer">
+          Cover art is illustrative — each tile shows one representative anime,
+          not an endorsement of every show within the tag.
+        </p>
+        <div class="genre-grid" id="genre-grid">
+          <div class="tile-grid-empty" id="genre-grid-empty">
+            Loading genres…
+          </div>
+        </div>
+      </section>
+
+      <!-- MVP-CUT (v0.2): Studios mode content commented out alongside
+           its mode tab above. To restore: uncomment the <section> block
+           below and the matching studios mode tab earlier in this file. -->
+      <!--
+      <section class="tab-content" data-mode="studios" hidden>
+        <p class="genre-disclaimer">
+          Tap a studio you've come to love or one whose work hasn't landed for you.
+          These taps will inform future creator-driven recs (engine wiring forthcoming).
+        </p>
+        <div class="studio-grid" id="studio-grid">
+          <div class="tile-grid-empty" id="studio-grid-empty">
+            Loading studios…
+          </div>
+        </div>
+      </section>
+      -->
+      <!-- /MVP-CUT (Studios mode content) -->
+    </main>
+
+    <!-- Summary screen, hidden until Done click -->
+    <section class="summary-screen" id="summary-screen" hidden>
+      <h2 class="summary-title">Your taste shape so far</h2>
+      <p class="summary-subtitle" id="summary-subtitle">
+        Based on your taps, here's how the engine reads your taste.
+        Open any series page on Crunchyroll to see your personalized
+        Smart Score.
+      </p>
+      <div class="summary-cards">
+        <div class="summary-card">
+          <h3 class="summary-card-title">Top archetypes</h3>
+          <ul class="summary-list" id="summary-archetypes"></ul>
+        </div>
+        <div class="summary-card">
+          <h3 class="summary-card-title">Top tags you lean toward</h3>
+          <ul class="summary-list" id="summary-positive-tags"></ul>
+        </div>
+        <div class="summary-card">
+          <h3 class="summary-card-title">Tags you avoid</h3>
+          <ul class="summary-list" id="summary-anti-tags"></ul>
+        </div>
+        <div class="summary-card summary-confidence">
+          <h3 class="summary-card-title">Engine confidence</h3>
+          <div class="confidence-readout" id="confidence-readout">
+            <div class="confidence-readout-label" id="confidence-readout-label">low</div>
+            <div class="confidence-readout-hint" id="confidence-readout-hint">
+              Tap more tiles to sharpen your taste shape.
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Pending-taps notice. Hidden by default; shown only when the
+           worker reports that some show-taps couldn't fold yet because
+           their AniList Media hadn't arrived (rate-limit or slow
+           response). The bridge-cache listener will retroactively
+           recompute when the data lands, so this is informational. -->
+      <div class="summary-pending" id="summary-pending" hidden>
+        <span class="summary-pending-icon" aria-hidden="true">⏳</span>
+        <div class="summary-pending-text">
+          <strong id="summary-pending-count">0 taps</strong>
+          <span id="summary-pending-message">are still loading their show data — they'll fold into your taste shape automatically once it arrives.</span>
+        </div>
+      </div>
+
+      <!-- Per-tag tap-effect surface. Voices the engine's response
+           to each surveyTagShapes tap (fired-with-candidates / fired-
+           no-candidates / noop-behavior-stronger / noop-thin-vector).
+           Populated by renderTapEffectsNotice from surveyTapEffects
+           storage. Hidden when there are no taps. -->
+      <div class="summary-tap-effects" id="summary-tap-effects" hidden></div>
+
+      <!-- Top picks preview — the celebration moment. Three actual
+           recommendations the engine cooked up from the user's taps,
+           each clickable to its CR series page. Hidden when the
+           engine hasn't produced ranked recs yet (cold start with no
+           CR history will land here). -->
+      <section class="summary-top-picks" id="summary-top-picks" hidden>
+        <h3 class="summary-card-title">First three picks for you</h3>
+        <!-- Score-spread feedback. Hidden when no recs are scored.
+             When recs exist, surfaces the gap between top and bottom
+             of the ranking — a wide gap means the engine has real
+             confidence; a tight gap means more taps would help. -->
+        <p class="summary-spread" id="summary-spread" hidden></p>
+        <ul class="summary-picks-list" id="summary-picks-list"></ul>
+        <p class="summary-picks-foot">Tap any pick to open its Crunchyroll page.</p>
+      </section>
+
+      <div class="summary-actions">
+        <button class="summary-btn-secondary" id="refine-btn" title="Save your changes and go back to tap more">
+          ← keep refining
+        </button>
+        <button class="summary-btn-primary" id="open-picks-btn" title="Save your changes and open the Smart Picks panel">
+          Open Smart Picks →
+        </button>
+      </div>
+      <div class="summary-actions-footer">
+        <button class="summary-link-secondary" id="close-btn" type="button"
+                title="Save your changes and close this tab">
+          or just close this tab
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="survey.js"></script>
+</body>
+</html>

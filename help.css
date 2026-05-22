@@ -1,0 +1,1023 @@
+/* Help page — single-column reference. Visual tokens match the rest
+   of the extension; no new aesthetic direction (alpha polish pass is
+   structural). */
+
+:root {
+  --bg: #14110f;
+  --card: #1c1916;
+  --line: rgba(255, 255, 255, 0.08);
+  --text: #f0e8df;
+  --muted: #9a8e80;
+  --accent: #ff8c28;
+  --code-bg: rgba(255, 255, 255, 0.06);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.help {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 56px 28px 96px;
+}
+
+.help-header {
+  margin-bottom: 48px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--line);
+}
+
+.help-kicker {
+  display: inline-block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.6px;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+.help-title {
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0 0 8px;
+}
+
+.help-sub {
+  color: var(--muted);
+  font-size: 15px;
+  margin: 0 0 16px;
+}
+
+/* The "why install" hook — a single-paragraph pitch block sitting
+   between the subhead and the TOC. Lifted out of body type so it
+   reads as a quick orientation, not body content. */
+.help-pitch {
+  margin: 0 0 24px;
+  padding: 16px 18px;
+  background:
+    radial-gradient(120% 200% at 0% 0%, rgba(255, 140, 40, 0.14), rgba(255, 140, 40, 0.04) 60%),
+    rgba(255, 140, 40, 0.04);
+  border: 1px solid rgba(255, 140, 40, 0.25);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14.5px;
+  line-height: 1.6;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+}
+.help-pitch em {
+  color: var(--accent);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.help-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 13px;
+}
+.help-toc a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+.help-toc a:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(255, 140, 40, 0.06);
+}
+/* Group label inside the TOC. flex-basis:100% forces it onto its own
+   row, so the pill links that follow wrap into a labeled cluster until
+   the next label — turning the flat link list into "Start here / How it
+   works / Good to know" tiers without nested containers. */
+.help-toc-label {
+  flex-basis: 100%;
+  margin: 8px 0 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  opacity: 0.7;
+}
+.help-toc-label:first-child { margin-top: 0; }
+
+/* Page footer — version stamp + source link, sits inside .help so it
+   inherits the centered column width. */
+.help-footer {
+  margin: 48px 0 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.help-footer a {
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.help-footer a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.help-footer-sep { opacity: 0.4; }
+
+.help-section {
+  scroll-margin-top: 24px;
+  margin-bottom: 40px;
+  padding-top: 28px;
+  border-top: 1px solid var(--line);
+}
+/* First section after the header doesn't need its own divider —
+   the header already has a bottom border. */
+.help-section:first-of-type {
+  padding-top: 0;
+  border-top: none;
+}
+
+.help-section h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 14px;
+  color: var(--text);
+}
+
+.help-section p {
+  margin: 0 0 14px;
+  color: var(--text);
+}
+
+.help-section ul {
+  margin: 0 0 16px;
+  padding-left: 22px;
+}
+.help-section li {
+  margin-bottom: 6px;
+}
+
+.help-section strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.help-section a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Callout — soft-tinted block for asides ("heads up...", "if you
+   don't know...", "browser support..."). Lower-key than .help-pitch
+   so it can appear repeatedly without shouting. */
+.help-callout {
+  margin: 14px 0 16px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line);
+  border-left: 3px solid rgba(255, 140, 40, 0.5);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 14px;
+}
+.help-callout strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Numbered list for the Getting Started 3-step. Larger gaps so each
+   step reads as a discrete action, not a continuation. */
+.help-numbered {
+  margin: 0 0 18px;
+  padding-left: 26px;
+  counter-reset: step;
+}
+.help-numbered li {
+  margin-bottom: 12px;
+  padding-left: 4px;
+}
+.help-numbered li::marker {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.help-section code {
+  background: var(--code-bg);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* ── Visual mockups ────────────────────────────────────────────
+   Inline HTML/SVG mocks demonstrate features without bundling
+   screenshots. They reuse the extension's color tokens so the
+   visuals feel kin to the real UI without re-implementing it. */
+.help-visual {
+  margin: 16px 0 22px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.help-visual figcaption {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* — Smart Score card mock — */
+.mock-card {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 16px;
+  background: linear-gradient(180deg, rgba(28, 23, 20, 0.95), rgba(20, 16, 13, 0.95));
+  border: 1px solid rgba(255, 140, 40, 0.3);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 480px;
+}
+.mock-card-ring {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+}
+.mock-card-ring svg { width: 64px; height: 64px; transform: rotate(-90deg); }
+.mock-ring-bg { fill: none; stroke: rgba(255, 255, 255, 0.08); stroke-width: 5; }
+.mock-ring-fill { fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round; }
+.mock-card-score {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.mock-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+/* Tier chips — match the actual on-card style: solid bg, dark text.
+   Colors mirror tierFor() in content.js so the help page reads as
+   "this is what you'll see," not a separate visual language. */
+.mock-tier {
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+  align-self: flex-start;
+  display: inline-block;
+  white-space: nowrap;
+}
+.mock-tier-trust    { background: #b450ff; color: #1a0014; }
+.mock-tier-worth    { background: #4caf50; color: #0a1a0a; }
+.mock-tier-stretch  { background: #ff8c28; color: #1a0e00; }
+.mock-tier-probably { background: #a09a8a; color: #1a1810; }
+.mock-tier-skip     { background: #a64d4d; color: #1a1010; }
+
+/* Tier-color demo row above the bullet list. */
+.tier-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0 18px;
+}
+
+/* Inline tier-name spans inside the bullet list. Tints the strong
+   word so eye-tracking the list back to the visual is one beat. */
+.tier-list { padding-left: 22px; }
+.tier-name {
+  font-weight: 700;
+  letter-spacing: 0.6px;
+}
+.tier-name-trust    { color: #cf85ff; }
+.tier-name-worth    { color: #6cd47c; }
+.tier-name-stretch  { color: #ff8c28; }
+.tier-name-probably { color: #cfc8b8; }
+.tier-name-skip     { color: #d28686; }
+
+/* Subhead inside a help-section — separates the badge gallery
+   from the tier explainer cleanly. */
+.help-subhead {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 28px 0 8px;
+  color: var(--text);
+}
+
+/* Badge grid: paired chip + description rows, easy to skim. */
+.badge-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0 4px;
+}
+.badge-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.badge-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+  flex: 1;
+}
+.mock-badge {
+  font-size: 10.5px;
+  letter-spacing: 0.8px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+/* Badge tones — pulled directly from QUALITY_CHIP_TONES in
+   content.js so the help page and the live card stay in sync. */
+.badge-favorite {
+  background: rgba(200,130,255,0.18);
+  color: #dab6ff;
+  border-color: rgba(200,130,255,0.50);
+}
+.badge-watchlist {
+  background: rgba(140,160,255,0.16);
+  color: #b9c5ff;
+  border-color: rgba(140,160,255,0.45);
+}
+.badge-rewatched {
+  background: rgba(255,140,40,0.18);
+  color: #ffb677;
+  border-color: rgba(255,140,40,0.50);
+}
+.badge-cr-pick {
+  background: rgba(60,200,200,0.16);
+  color: #9adcd9;
+  border-color: rgba(60,200,200,0.45);
+}
+.badge-audience {
+  background: rgba(255,210,90,0.16);
+  color: #ffe09a;
+  border-color: rgba(255,210,90,0.45);
+}
+.badge-pedigree {
+  background: rgba(60,200,120,0.18);
+  color: #a5e8be;
+  border-color: rgba(60,200,120,0.45);
+}
+.badge-rushed {
+  background: rgba(255,170,60,0.18);
+  color: #ffcf91;
+  border-color: rgba(255,170,60,0.45);
+}
+.badge-early {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.65);
+  border-color: rgba(255,255,255,0.18);
+}
+.badge-low {
+  background: rgba(220,140,120,0.14);
+  color: #e6a896;
+  border-color: rgba(220,140,120,0.40);
+}
+.badge-dealbreaker {
+  background: rgba(255,80,80,0.14);
+  color: #ff9c9c;
+  border-color: rgba(255,80,80,0.45);
+}
+.mock-card-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.mock-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.mock-chip {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+}
+.mock-chip-pos {
+  color: #5fdb91;
+  background: rgba(60, 200, 120, 0.08);
+  border-color: rgba(60, 200, 120, 0.25);
+}
+.mock-chip-neg {
+  color: #ff8585;
+  background: rgba(255, 80, 80, 0.08);
+  border-color: rgba(255, 80, 80, 0.25);
+}
+
+/* — Side-panel mock — */
+.mock-panel {
+  width: 100%;
+  max-width: 280px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.mock-panel-tabs,
+.mock-panel-modes {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+}
+.mock-tab,
+.mock-mode {
+  flex: 1;
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+}
+.mock-tab.active,
+.mock-mode.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.mock-panel-modes { padding: 6px; gap: 6px; border-bottom: 1px solid var(--line); }
+.mock-mode {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 4px 12px;
+}
+.mock-mode.active {
+  background: rgba(255, 140, 40, 0.12);
+  border-color: var(--accent);
+  border-bottom: 1px solid var(--accent);
+}
+.mock-panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+}
+.mock-panel-pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+.mock-pick-rank {
+  flex: 0 0 18px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.mock-pick-title { flex: 1; }
+.mock-pick-score {
+  color: var(--accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* — Taste Shape radar —
+   overflow: visible lets multi-line axis labels extend slightly
+   past the viewBox edges without clipping (same approach as the
+   live sidepanel radar). The figure container has padding so the
+   labels still don't bump the card edge. */
+.mock-radar {
+  width: 100%;
+  max-width: 460px;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+.mock-radar-ring {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.10);
+  stroke-width: 1;
+}
+.mock-radar-spoke {
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+.mock-radar-fill {
+  fill: rgba(255, 140, 40, 0.22);
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px rgba(255, 140, 40, 0.25));
+}
+.mock-radar-vertex {
+  fill: var(--accent);
+  stroke: rgba(255, 140, 40, 0.4);
+  stroke-width: 1.5;
+}
+.mock-radar-label {
+  fill: var(--text);
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+/* — Drop-down: technical breakdown — */
+.help-details {
+  margin: 14px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+.help-details > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  transition: background 120ms ease;
+}
+.help-details > summary::-webkit-details-marker { display: none; }
+.help-details > summary::before {
+  content: "▸";
+  font-size: 12px;
+  color: var(--muted);
+  transition: transform 160ms ease;
+  display: inline-block;
+}
+.help-details[open] > summary::before { transform: rotate(90deg); }
+.help-details > summary:hover { background: rgba(255, 140, 40, 0.05); }
+.help-details-body {
+  padding: 6px 18px 18px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.help-details-body p { margin: 12px 0; }
+.help-details-body p:first-child { margin-top: 14px; }
+.help-details-body strong { color: var(--text); font-weight: 600; }
+.help-details-body em { color: var(--muted); font-style: italic; }
+.help-code {
+  display: block;
+  padding: 10px 12px;
+  background: var(--code-bg);
+  border-radius: 6px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.help-axis-list {
+  margin: 8px 0 14px;
+  padding-left: 22px;
+}
+.help-axis-list li { margin-bottom: 4px; }
+.help-axis-list strong { color: var(--accent); }
+.help-source-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+
+/* — Quick Taste Check tiles — */
+.mock-survey {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 100%;
+  max-width: 480px;
+}
+.mock-survey-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 11px;
+  text-align: center;
+}
+.mock-tile-thumb {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  background: linear-gradient(160deg, #2a221c, #15110d);
+  border-radius: 4px;
+}
+.mock-tile-name {
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.mock-tile-tag { color: var(--muted); font-size: 10px; }
+.mock-tile-loved {
+  border-color: rgba(60, 200, 120, 0.5);
+  background: rgba(60, 200, 120, 0.08);
+}
+.mock-tile-loved .mock-tile-tag { color: #5fdb91; }
+.mock-tile-disliked {
+  border-color: rgba(255, 80, 80, 0.5);
+  background: rgba(255, 80, 80, 0.06);
+}
+.mock-tile-disliked .mock-tile-tag { color: #ff8585; }
+
+/* — Reactions — */
+.mock-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.mock-react {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+}
+.mock-react-pos {
+  background: rgba(60, 200, 120, 0.10);
+  color: #5fdb91;
+  border-color: rgba(60, 200, 120, 0.35);
+}
+.mock-react-neg {
+  background: rgba(255, 80, 80, 0.08);
+  color: #ff8585;
+  border-color: rgba(255, 80, 80, 0.35);
+}
+
+/* — Vibes — */
+.mock-vibes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+.mock-vibe-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-right: 4px;
+}
+.mock-vibe-chip {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.mock-vibe-chip.active {
+  background: rgba(255, 140, 40, 0.15);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* — Dealbreakers — */
+.mock-dealbreakers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 460px;
+}
+.mock-dealbreakers-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.mock-dealbreakers-head {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-right: 4px;
+}
+.mock-db-chip {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.mock-db-active {
+  background: rgba(255, 80, 80, 0.10);
+  color: #ff8585;
+  border-color: rgba(255, 80, 80, 0.4);
+}
+
+/* — Anatomy diagram (Getting Started → "Where things live") —
+   Four small panels in a 2x2 grid (4-col on wide viewports), each
+   showing a stylized version of one entry surface. Stacks to one
+   column on narrow viewports. Cards stretch to equal height so the
+   art row aligns even when descriptions wrap to different line counts. */
+.mock-anatomy {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+@media (max-width: 720px) {
+  .mock-anatomy { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 420px) {
+  .mock-anatomy { grid-template-columns: 1fr; }
+}
+.anatomy-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  text-align: center;
+}
+.anatomy-art {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+}
+.anatomy-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.3px;
+}
+.anatomy-desc {
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.45;
+  min-height: 2.9em;  /* keeps two-line descs from leaving 1-line cards short */
+}
+
+/* Toolbar: gradient icon + three faint menu rows beneath, communicating
+   "icon opens a menu" instead of just sitting alone. */
+.anatomy-art-toolbar { gap: 10px; padding: 0 12px; }
+.anatomy-toolbar-icon {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(160deg, #ff8c28, #c95a00);
+  color: #1a0e00;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 1px rgba(255, 140, 40, 0.4), 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+.anatomy-toolbar-menu {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.anatomy-toolbar-menu span {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 2px;
+  width: 100%;
+}
+.anatomy-toolbar-menu span:nth-child(2) { width: 75%; }
+.anatomy-toolbar-menu span:nth-child(3) { width: 55%; }
+
+/* CR top-bar mini — logo left, sparkle right. */
+.anatomy-art-bar {
+  justify-content: space-between;
+  padding: 0 12px;
+  background: linear-gradient(180deg, #1a0f0a, #0d0805);
+}
+.anatomy-cr-logo {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #ff8c28;
+}
+.anatomy-cr-spacer { flex: 1; }
+.anatomy-sparkle {
+  font-size: 16px;
+  color: var(--accent);
+  filter: drop-shadow(0 0 5px rgba(255, 140, 40, 0.7));
+}
+
+/* In-page Smart Score card mini — score ring + tier chip + reason lines. */
+.anatomy-art-card {
+  gap: 8px;
+  padding: 0 10px;
+  background: linear-gradient(180deg, #1c1612, #14100c);
+  border-color: rgba(255, 140, 40, 0.25);
+}
+.anatomy-card-ring {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(255, 140, 40, 0.08);
+}
+.anatomy-card-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.anatomy-card-tier {
+  font-size: 7.5px;
+  letter-spacing: 0.8px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #b450ff;
+  color: #1a0014;
+}
+.anatomy-card-lines span:not(.anatomy-card-tier) {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 2px;
+  width: 100%;
+}
+.anatomy-card-lines span:nth-child(3) { width: 70%; }
+
+/* Side-panel mini — tabs + two pick rows (rank · title · score). */
+.anatomy-art-panel {
+  flex-direction: column;
+  gap: 0;
+  padding: 6px 8px 8px;
+  background: var(--card);
+}
+.anatomy-panel-tabs {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  font-size: 9.5px;
+  letter-spacing: 0.3px;
+}
+.anatomy-panel-tab {
+  flex: 1;
+  text-align: center;
+  padding: 2px 0 4px;
+  color: var(--muted);
+  border-bottom: 1.5px solid transparent;
+}
+.anatomy-panel-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.anatomy-panel-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  margin-top: 6px;
+}
+.anatomy-panel-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.anatomy-panel-rank {
+  flex: 0 0 auto;
+  color: var(--muted);
+  width: 10px;
+  text-align: right;
+}
+.anatomy-panel-title {
+  flex: 1;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 2px;
+}
+.anatomy-panel-row:nth-child(2) .anatomy-panel-title { width: 80%; flex: 0 0 auto; max-width: 80%; }
+.anatomy-panel-score {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* — Back-to-top floating link —
+   Pure-CSS, always visible. Sits bottom-right, semi-transparent so
+   it doesn't compete with body content; opaque on hover. The page
+   has its own #top anchor at the very top. */
+.help-anchor { display: block; height: 0; visibility: hidden; }
+.help-to-top {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(28, 25, 22, 0.85);
+  color: var(--accent);
+  border: 1px solid rgba(255, 140, 40, 0.35);
+  border-radius: 50%;
+  font-size: 18px;
+  text-decoration: none;
+  opacity: 0.55;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  transition: opacity 160ms ease, transform 160ms ease, background 160ms ease;
+  z-index: 10;
+}
+.help-to-top:hover {
+  opacity: 1;
+  background: rgba(255, 140, 40, 0.18);
+  transform: translateY(-2px);
+}
+
+/* — Glossary (definition list) —
+   Two-column on wider viewports (term left, definition right) for
+   quick scanning; collapses to stacked on narrow. */
+.help-glossary {
+  display: grid;
+  grid-template-columns: minmax(120px, 160px) 1fr;
+  gap: 10px 18px;
+  margin: 12px 0 8px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+@media (max-width: 540px) {
+  .help-glossary {
+    grid-template-columns: 1fr;
+    gap: 4px 0;
+  }
+  .help-glossary dt { margin-top: 10px; }
+  .help-glossary dt:first-child { margin-top: 0; }
+}
+.help-glossary dt {
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 13.5px;
+  letter-spacing: 0.2px;
+  align-self: start;
+}
+.help-glossary dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 13.5px;
+  line-height: 1.55;
+}

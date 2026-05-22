@@ -1,0 +1,1352 @@
+:root {
+  --bg: #14100d;
+  --bg-elev: #1c1714;
+  --fg: #f5efe8;
+  --muted: rgba(245, 239, 232, 0.55);
+  --line: rgba(255, 255, 255, 0.08);
+  --accent: #ff8c28;
+  --accent-soft: rgba(255, 140, 40, 0.14);
+  --safe: #4caf50;
+  --stretch: #ff8c28;
+  --trust: #b450ff;
+  --skip: #888;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Chrome popup max-height ≈ 600px. Cap the app and let the middle scroll
+   so the footer (search / settings) is always reachable without scrolling. */
+.app {
+  width: 380px;
+  max-height: 600px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ── Pages ────────────────────────────────────────── */
+.page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 600px;
+}
+.page.hidden { display: none; }
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+.page-back {
+  font-family: inherit;
+  font-size: 18px;
+  width: 30px;
+  height: 30px;
+  background: rgba(255,255,255,0.04);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 120ms ease;
+}
+.page-back:hover { background: rgba(255,255,255,0.10); }
+.page-title {
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
+.page-spacer { flex: 1; }
+
+/* ── Settings rows + toggle switch ────────────────── */
+.setting-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.setting-row:first-of-type { border-top: 0; padding-top: 0; }
+.setting-row.disabled { opacity: 0.45; }
+.setting-info { flex: 1; min-width: 0; }
+.setting-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 2px;
+}
+/* Inline pill marker for experimental settings — flags the row as
+   non-default behavior the user is opting into. */
+.experimental-pill {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: rgba(255, 140, 40, 0.95);
+  background: rgba(255, 140, 40, 0.10);
+  border: 1px solid rgba(255, 140, 40, 0.35);
+  border-radius: 999px;
+  vertical-align: middle;
+}
+.setting-desc {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.toggle {
+  position: relative;
+  flex: 0 0 auto;
+  margin-top: 2px;
+  cursor: pointer;
+  display: inline-block;
+}
+.toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.toggle-track {
+  display: block;
+  width: 34px;
+  height: 18px;
+  background: rgba(255,255,255,0.10);
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  position: relative;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.toggle-thumb {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 14px;
+  height: 14px;
+  background: #c8c0b4;
+  border-radius: 50%;
+  transition: transform 160ms ease, background 140ms ease;
+}
+.toggle input:checked + .toggle-track {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.toggle input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(16px);
+  background: #1a0e00;
+}
+.toggle input:disabled + .toggle-track { cursor: not-allowed; }
+
+/* ── Slider (range input) ─────────────────────────── */
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  margin-top: 10px;
+  background: rgba(255,255,255,0.10);
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #1a0e00;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  cursor: pointer;
+}
+.slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #1a0e00;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  cursor: pointer;
+}
+
+/* Segmented control — used by the taste-shape Animation Tempo setting.
+   Four buttons in a single row; the active one takes the accent fill. */
+.seg-control {
+  display: flex;
+  gap: 0;
+  margin-top: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 8px;
+  padding: 3px;
+  overflow: hidden;
+}
+.seg-control .seg {
+  flex: 1;
+  padding: 6px 4px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: rgba(245,239,232,0.55);
+  transition: background 150ms, color 150ms;
+  white-space: nowrap;
+}
+.seg-control .seg:hover { color: var(--fg, #f5efe8); }
+.seg-control .seg.active {
+  background: rgba(255,140,40,0.20);
+  color: hsl(20, 90%, 72%);
+  font-weight: 600;
+}
+.scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.scroll::-webkit-scrollbar { width: 8px; }
+.scroll::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
+}
+
+/* ── Header ───────────────────────────────────────── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+.brand { display: flex; align-items: center; gap: 8px; }
+.dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(255, 140, 40, 0.6);
+}
+.brand-name { font-weight: 600; letter-spacing: 0.2px; }
+.status-pill {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid rgba(255, 140, 40, 0.3);
+}
+.status-pill.disconnected {
+  background: rgba(255,255,255,0.04);
+  color: var(--muted);
+  border-color: var(--line);
+}
+
+/* ── Block ────────────────────────────────────────── */
+.block {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.block-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.block-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.block-label-row .block-label { margin-bottom: 0; }
+.block-foot { margin-top: 8px; }
+
+.muted { color: var(--muted); }
+.small { font-size: 11px; }
+.link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 11px;
+}
+.link:hover { text-decoration: underline; }
+/* Warn-tinted link variant for destructive actions like "clear my
+   survey taps." Same typography as .link; color shifts to a soft
+   pink so the eye reads it as "this will undo something" without
+   shouting. is-confirming flips to a pulsing brighter pink during
+   the tap-to-confirm window. */
+.link-warn {
+  color: var(--loved, #ff4f8a);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+}
+.link-warn:hover { text-decoration: underline; }
+.link-warn.is-confirming {
+  color: #ff7da9;
+  font-weight: 600;
+  animation: link-warn-pulse 1.4s ease-in-out infinite;
+}
+@keyframes link-warn-pulse {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1.00; }
+}
+.archetypes-survey {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  gap: 10px;
+}
+.archetypes-survey[hidden] { display: none; }
+
+/* ── Collapsible blocks ───────────────────────────── */
+.collapsible { padding: 0; }
+.block-head {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.block-head:hover { background: rgba(255,255,255,0.02); }
+.block-head .block-label { margin-bottom: 0; }
+.head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.caret {
+  font-size: 11px;
+  color: var(--muted);
+  transition: transform 160ms ease;
+}
+.collapsible.collapsed .caret { transform: rotate(-90deg); }
+.block-body {
+  padding: 0 16px 14px;
+  overflow: hidden;
+}
+.collapsible.collapsed .block-body { display: none; }
+
+/* ── Persistent help-page link ─────────────────────── */
+/* Top-of-popup help card. Visually distinct from .block sections —
+   uses the accent color on the left edge + a tinted background so it
+   reads as a friendly intro hint, not an information row. Whole card
+   is the link target. */
+.popup-help-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin: 10px 12px 6px;
+  text-decoration: none;
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+.popup-help-card:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+}
+.popup-help-card:active {
+  transform: translateY(1px);
+}
+.popup-help-glyph {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #0a0a0a;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+}
+.popup-help-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.popup-help-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.1px;
+}
+.popup-help-sub {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.popup-help-chev {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--accent);
+  opacity: 0.7;
+}
+.popup-help-card:hover .popup-help-chev {
+  opacity: 1;
+}
+
+/* ── Onboarding funnel strip — shared with survey.css.
+       Mirrors that vocabulary so the user sees the same affordance
+       in both places. */
+.onboarding-funnel {
+  list-style: none;
+  margin: 12px 14px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  font-size: 11px;
+}
+.onboarding-funnel[hidden] { display: none; }
+.funnel-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted, #9a8e80);
+  position: relative;
+  padding: 0 4px;
+  flex: 0 0 auto;
+}
+.funnel-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line, rgba(255, 255, 255, 0.3));
+  display: inline-block;
+  flex: 0 0 auto;
+  position: relative;
+}
+.funnel-step.is-active .funnel-dot {
+  background: var(--accent, #ff8c28);
+  border-color: var(--accent, #ff8c28);
+  box-shadow: 0 0 0 3px rgba(255, 140, 40, 0.18);
+}
+.funnel-step.is-active .funnel-label {
+  color: var(--accent, #ff8c28);
+  font-weight: 600;
+}
+.funnel-step.is-done .funnel-dot {
+  background: rgba(60, 200, 120, 0.85);
+  border-color: rgba(60, 200, 120, 0.85);
+}
+.funnel-step.is-done .funnel-dot::after {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  text-align: center;
+  font-size: 8px;
+  line-height: 10px;
+  color: #0a1a0a;
+  font-weight: 700;
+}
+.funnel-step.is-done .funnel-label {
+  color: var(--text, #f0e8df);
+}
+
+/* ── Start-here empty-state banner ────────────────── */
+.start-here {
+  background: rgba(255, 140, 40, 0.06);
+  border-bottom: 1px solid rgba(255, 140, 40, 0.18);
+}
+.start-here[hidden] { display: none; }
+.start-here-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent, #ff8c28);
+  margin-bottom: 4px;
+}
+.start-here-body {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.start-here-btn {
+  width: 100%;
+  text-align: center;
+  font-weight: 600;
+}
+/* Action row — primary CTA on top, "not now" tucked underneath at
+   muted size so the dismiss is discoverable but not weighty. Only
+   appears for re-engage / anilist-stuck modes. */
+.start-here-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.start-here-dismiss {
+  background: none;
+  border: none;
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.start-here-dismiss:hover { color: var(--accent, #ff8c28); }
+.start-here-dismiss[hidden] { display: none; }
+/* Mode tints — same chrome, slightly different border so the
+   re-engage / anilist-stuck states feel distinct from cold-start. */
+.start-here[data-mode="reengage"] {
+  background: rgba(255, 140, 40, 0.08);
+  border-bottom-color: rgba(255, 140, 40, 0.30);
+}
+.start-here[data-mode="anilist-stuck"] {
+  background: rgba(255, 80, 80, 0.06);
+  border-bottom-color: rgba(255, 80, 80, 0.28);
+}
+.start-here[data-mode="anilist-stuck"] .start-here-title {
+  color: #ff8585;
+}
+
+/* ── Archetype blend ──────────────────────────────── */
+.archetype-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.arch {
+  display: grid;
+  grid-template-columns: 1fr 36px;
+  gap: 10px;
+  align-items: center;
+}
+.arch-name {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.arch-swatch {
+  width: 8px; height: 8px; border-radius: 2px;
+  flex: 0 0 auto;
+}
+.arch-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.arch-bar {
+  grid-column: 1 / -1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.arch-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 240ms ease;
+}
+.arch-pct {
+  text-align: right;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Sync progress (AniList + CR history) ─────────── */
+.sync-progress { padding: 10px 12px 12px; }
+.sync-progress[hidden] { display: none; }
+.progress-row { display: flex; flex-direction: column; gap: 5px; }
+.progress-row + .progress-row { margin-top: 10px; }
+.progress-row[hidden] { display: none; }
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.progress-title { font-size: 12px; color: var(--text); font-weight: 500; }
+.progress-counts {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.progress-bar {
+  position: relative;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  width: 0;
+  transition: width 240ms ease-out;
+}
+.progress-fill.indeterminate {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 140, 40, 0.0) 0%,
+    var(--accent) 50%,
+    rgba(255, 140, 40, 0.0) 100%
+  );
+  background-size: 240% 100%;
+  animation: progress-indet 1.6s linear infinite;
+}
+@keyframes progress-indet {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* ── Profile completeness ─────────────────────────── */
+.completeness-reason {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.completeness-reason:empty { display: none; }
+.completeness-reason strong { color: var(--accent, #ff8c28); font-weight: 600; }
+
+.completeness { display: flex; align-items: center; gap: 8px; }
+.completeness-bar {
+  width: 80px; height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.completeness-fill {
+  display: block; height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+}
+.completeness-num {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.source-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.source {
+  display: grid;
+  grid-template-columns: 18px 1fr auto auto;
+  /* Top-align so the icon + action button stay next to the header
+     row even when .source-content gains a subtitle / expanded impact
+     panel (otherwise they vertically-center against the tall content
+     column and visually drift away from the header text). */
+  align-items: start;
+  gap: 10px;
+  padding: 6px 0;
+}
+/* Nudge the icon down a hair so it lines up with the header text's
+   cap height rather than its top — top-aligned looks too high. */
+.source > .source-icon { margin-top: 2px; }
+.source-icon {
+  width: 18px; height: 18px; line-height: 18px;
+  text-align: center;
+  border-radius: 50%;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+}
+.source.connected .source-icon {
+  background: rgba(76, 175, 80, 0.2);
+  color: #6fcf73;
+}
+/* Anchor variant — used on the Quick Taste Check row's "?" icon so it
+   deep-links to the help section explaining the survey. Inherits the
+   round-pill visual from .source-icon; adds a hover state + pointer
+   cursor + display:inline-block so the anchor centers its glyph the
+   same way the span does. */
+.source-icon-link {
+  display: inline-block;
+  text-decoration: none;
+  cursor: help;
+  transition: background 120ms ease, color 120ms ease;
+}
+.source-icon-link:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent);
+}
+.source-name { font-size: 12px; }
+.source-meta { font-size: 11px; color: var(--muted); }
+/* Stack layout for source rows that carry a subtitle. The default
+   .source grid (18px | 1fr | auto | auto) squashed the name into a
+   tiny column when the meta line was long — meta took most of the
+   width as `auto`, leaving the 1fr name+subtitle column ~100px and
+   forcing the subtitle to wrap one-word-per-line. Switch the row to
+   a 2-col grid (icon | content) and let the content column own a
+   vertical stack: header (name + refresh) → subtitle → meta. Each
+   line wraps freely against the full content width. */
+.source.has-subtitle {
+  grid-template-columns: 18px 1fr;
+  align-items: flex-start;
+}
+.source.has-subtitle .source-icon { margin-top: 2px; }
+/* External-source rows (AniList, MAL, MAL XML) have additional
+   top-level children — the orange action button and the trailing
+   icon cluster (↻ ⏻ ▾). The 2-column has-subtitle override above
+   would auto-flow those onto a second grid row, causing them to
+   overlap. Restore the 4-column template for any has-subtitle row
+   that actually has those siblings, and lay out two rows: row 1
+   carries name + action + icons (compact), row 2 lets the subtitle
+   (and impact panel) span all four columns so long meta text uses
+   the full row width instead of wrapping inside a ~140px column.
+   source-content becomes a display:contents passthrough so its
+   children (name, subtitle, impact) participate directly in the
+   outer grid. */
+.source.has-subtitle:has(> .source-action),
+.source.has-subtitle:has(> .source-header-actions) {
+  grid-template-columns: 18px 1fr auto auto;
+  grid-template-rows: auto auto auto;
+  row-gap: 3px;
+}
+.source.has-subtitle:has(> .source-action) > .source-content,
+.source.has-subtitle:has(> .source-header-actions) > .source-content {
+  display: contents;
+}
+.source.has-subtitle:has(> .source-action) > .source-content > .source-name,
+.source.has-subtitle:has(> .source-header-actions) > .source-content > .source-name {
+  grid-column: 2;
+  grid-row: 1;
+}
+.source.has-subtitle:has(> .source-action) > .source-content > .source-subtitle,
+.source.has-subtitle:has(> .source-header-actions) > .source-content > .source-subtitle {
+  grid-column: 2 / -1;
+  grid-row: 2;
+}
+/* Impact panel + privacy reassurance span cols 2-3 — wider than col 2
+   alone (which forced long names like "Cute Girls Doing Cute Things"
+   to wrap and broke the delta's arrow + value pairing onto separate
+   visual rows) but not as sprawling as the full cols 2-4 span the
+   subtitle uses. Skipping col 4 keeps the icons cluster's track
+   tight even when impact is expanded. */
+.source.has-subtitle:has(> .source-action) > .source-content > .source-impact,
+.source.has-subtitle:has(> .source-header-actions) > .source-content > .source-impact {
+  grid-column: 2 / span 2;
+  grid-row: 3;
+}
+.source.has-subtitle:has(> .source-action) > .source-content > .source-privacy,
+.source.has-subtitle:has(> .source-header-actions) > .source-content > .source-privacy {
+  grid-column: 2 / span 2;
+  grid-row: 4;
+}
+.source.has-subtitle:has(> .source-action) > .source-action,
+.source.has-subtitle:has(> .source-header-actions) > .source-action {
+  grid-column: 3;
+  grid-row: 1;
+}
+.source.has-subtitle:has(> .source-action) > .source-header-actions,
+.source.has-subtitle:has(> .source-header-actions) > .source-header-actions {
+  grid-column: 4;
+  grid-row: 1;
+}
+.source-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.source-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+/* Trailing icon-button cluster (resync ↻ + signout ⏻ + impact-toggle ▾).
+   Flex with a small gap so the buttons sit tight together as a single
+   right-side group, instead of letting space-between spread them
+   across the full row width. */
+.source-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.source.has-subtitle .source-refresh { margin: 0; }
+.source.has-subtitle .source-meta {
+  /* Meta line lives inside the content stack now — let it wrap and
+     keep tabular-num formatting consistent with the rest of the panel. */
+  white-space: normal;
+  line-height: 1.4;
+}
+.source-subtitle {
+  font-size: 10.5px;
+  color: var(--muted);
+  font-style: italic;
+  opacity: 0.85;
+  line-height: 1.3;
+}
+
+/* Privacy reassurance card — visible only while a source is pending
+   (not yet connected). The .connected state hides it. Sized small but
+   readable; sits above the connect button so the user reads it at the
+   moment of decision. */
+.source-privacy {
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.source-privacy-text {
+  color: var(--muted);
+}
+.source-privacy-link {
+  font-size: 10.5px;
+  align-self: flex-start;
+}
+.source.connected .source-privacy { display: none; }
+
+/* Username field for username-based links (AniList). Was styled inline on
+   the element with a cool blue-gray that clashed with the popup's warm
+   palette; lifted here and re-themed. No inline margin so the pending-row
+   grid below can place it cleanly. */
+.source-username-input {
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+.source-username-input::placeholder { color: var(--muted); }
+.source-username-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-elev);
+}
+
+/* AniList while pending is a "connect by username" form. Reflow the row
+   so the reassurance reads first, then the username field and the connect
+   button pair on a single line — instead of the field stranded at the
+   bottom with the button pinned to the top-right corner (the two halves
+   of one action sat ~4 lines apart). Scoped to .pending so the linked
+   state keeps the shared top-right button + resync/signout cluster. */
+#source-anilist.pending {
+  grid-template-columns: 18px 1fr auto;
+  column-gap: 10px;
+  row-gap: 6px;
+}
+#source-anilist.pending > .source-content { display: contents; }
+#source-anilist.pending > .source-content > .source-name {
+  grid-column: 2 / -1; grid-row: 1;
+}
+#source-anilist.pending > .source-content > .source-privacy {
+  grid-column: 2 / -1; grid-row: 2; margin-top: 0;
+}
+#source-anilist.pending > .source-content > .source-username-input {
+  grid-column: 2; grid-row: 3;
+}
+#source-anilist.pending > .source-action {
+  grid-column: 3; grid-row: 3;
+  align-self: center;
+  white-space: nowrap;
+}
+/* Connect status/error ("enter your username", "list is private") drops
+   below the field it refers to. Only present on a failed attempt, so it
+   adds no row when absent. */
+#source-anilist.pending > .source-content > .source-subtitle {
+  grid-column: 2 / -1; grid-row: 4;
+}
+/* No resync/signout/impact cluster while pending — drop the empty track. */
+#source-anilist.pending > .source-header-actions { display: none; }
+
+.source-action {
+  font-family: inherit;
+  font-size: 11px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent-soft);
+  padding: 3px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.source-action:hover { background: var(--accent-soft); }
+.source-refresh {
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1;
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.source-refresh:hover { color: var(--accent); background: var(--accent-soft); }
+.source-refresh:disabled { cursor: wait; opacity: 0.6; }
+.source-refresh.spinning { animation: source-refresh-spin 0.9s linear infinite; }
+/* Sign-out variant — same icon-button shape, but the destructive
+   action gets a warning hue on hover so the click is intentional. */
+.source-refresh.source-signout:hover {
+  color: #ff7777;
+  background: rgba(255, 119, 119, 0.10);
+}
+.source-refresh[hidden] { display: none; }
+@keyframes source-refresh-spin { to { transform: rotate(360deg); } }
+
+/* ── Picks ────────────────────────────────────────── */
+.pick-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pick {
+  display: grid;
+  grid-template-columns: 64px 1fr 32px;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.pick-tier {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  text-align: center;
+  text-transform: uppercase;
+}
+.pick-tier.safe { background: rgba(76,175,80,0.18); color: var(--safe); }
+.pick-tier.stretch { background: rgba(255,140,40,0.18); color: var(--stretch); }
+.pick-tier.trust { background: rgba(180,80,255,0.18); color: var(--trust); }
+.pick-tier.skip { background: rgba(255,255,255,0.06); color: var(--skip); }
+.pick-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pick-score {
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Footer (pinned action bar) ───────────────────── */
+.footer {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px 14px;
+  background: var(--bg-elev);
+  border-top: 1px solid var(--line);
+}
+.ask-btn {
+  flex: 1;
+  font-family: inherit;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  padding: 9px 12px;
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 120ms ease;
+}
+.ask-btn:hover { background: rgba(255, 255, 255, 0.08); }
+.ask-icon { opacity: 0.7; }
+.ask-text { color: var(--muted); }
+.settings-btn {
+  font-family: inherit;
+  font-size: 16px;
+  width: 38px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.settings-btn:hover { color: var(--fg); background: rgba(255, 255, 255, 0.08); }
+
+/* ── Dealbreakers section ──────────────────────────────────────────
+   Chip-based UI for hard-filter tags. Active chips (red-tinted) can
+   be tapped to remove; suggested chips (muted) can be tapped to
+   promote to active. No manual text-input path in v1 — the auto-
+   surface from dimension scoring is the primary onramp. */
+.dealbreaker-intro {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
+.dealbreaker-group { margin-top: 10px; }
+.dealbreaker-group:first-of-type { margin-top: 6px; }
+.dealbreaker-group .block-sublabel {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.dealbreaker-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.dealbreaker-chip {
+  font-family: inherit;
+  font-size: 11.5px;
+  padding: 4px 9px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--fg);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.dealbreaker-chip.active {
+  background: rgba(255, 90, 90, 0.14);
+  border-color: rgba(255, 90, 90, 0.45);
+  color: #ffb8b8;
+}
+.dealbreaker-chip.active:hover {
+  background: rgba(255, 90, 90, 0.22);
+}
+.dealbreaker-chip.suggested {
+  border-style: dashed;
+  color: var(--muted);
+}
+.dealbreaker-chip.suggested:hover {
+  color: var(--fg);
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+}
+.dealbreaker-chip .chip-action { opacity: 0.55; font-size: 10px; }
+.dealbreaker-empty {
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+  padding: 2px 0;
+}
+
+
+/* Engine health section — popup status-at-a-glance. */
+.engine-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 12px;
+  font-size: 12px;
+  padding: 4px 0 8px;
+}
+.engine-grid .engine-key {
+  color: var(--muted);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding-top: 1px;
+}
+.engine-grid .engine-val {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+.engine-grid .engine-val.warn { color: #ffb677; }
+.engine-grid .engine-val.bad { color: #f0a5a5; }
+.engine-foot {
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* External-source rows (AniList + MAL) live inline with the existing
+   profile-completeness source-list. Most row layout (.source,
+   .source-icon, .source-name, .source-action, .has-subtitle,
+   .source-content) is inherited from .source-list rules above; these
+   add only the bits that vary by external-source state. */
+/* .source uses display:grid above, which overrides the user-agent
+   [hidden] { display:none } rule. Add explicit hide rules so the
+   `hidden` attribute actually hides external-source rows. */
+.source[hidden], .external-source[hidden] { display: none; }
+.external-source.is-coming-soon { opacity: 0.55; }
+.external-source.is-coming-soon .source-name { font-style: italic; }
+.external-source .source-action[data-action="busy"],
+.external-source .source-action[data-action="soon"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+/* Impact toggle — small caret button beside the source name. Only
+   visible when an impact diff exists (post-import). */
+.source-impact-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 11px;
+  margin-left: 4px;
+  transition: color 100ms;
+}
+.source-impact-toggle:hover { color: var(--text); }
+.source-impact-toggle[hidden] { display: none; }
+.source-impact-toggle.is-open { transform: rotate(180deg); display: inline-block; }
+/* Impact panel — appears under the row's subtitle when expanded.
+   Three sections (archetypes / studios / dimensions) each showing
+   union of pre/post top-5 with delta arrows. */
+.source-impact {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  border-left: 2px solid rgba(255, 140, 40, 0.4);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.source-impact[hidden] { display: none; }
+.source-impact .impact-summary {
+  color: var(--text);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.source-impact .impact-section {
+  margin-top: 6px;
+}
+.source-impact .impact-section-title {
+  color: var(--text-3);
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.source-impact .impact-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 1px 0;
+}
+.source-impact .impact-name {
+  color: var(--text-2);
+  /* Allow long names to shrink before the delta does — without
+     min-width:0 the name's flex-shrink stops at its min-content
+     width, which for a multi-word name is "the longest word". */
+  min-width: 0;
+}
+.source-impact .impact-delta {
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  /* Keep the arrow + value pair on one line. Without nowrap the
+     delta wraps between "↓ " and "0.009" when the impact panel is
+     narrow, splitting the indicator from its number. */
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.source-impact .impact-delta.up    { color: #8edc8e; }
+.source-impact .impact-delta.down  { color: #f0a5a5; }
+.source-impact .impact-delta.new   { color: #ffb677; font-weight: 600; }
+.source-impact .impact-delta.gone  { color: var(--text-3); opacity: 0.7; }
+
+/* ── Backup & restore section (main popup, below engine status) ─────
+   Default-collapsed. When expanded: brief intro, Save subsection
+   (bucket list + primary save button), Restore subsection (one-line
+   description + secondary "open page" button). The two subsections
+   are visually grouped with their own background tint to read as
+   "two stages of one feature" rather than two flat actions. */
+.backup-intro {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+.backup-section {
+  background: rgba(255, 255, 255, 0.018);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.backup-section-restore {
+  margin-bottom: 4px;
+}
+.backup-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.backup-section-title {
+  font-size: 11px;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--text);
+}
+.backup-section-hint {
+  font-size: 10.5px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.backup-bucket-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.backup-bucket {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  align-items: start;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: background 120ms ease;
+}
+.backup-bucket:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.backup-bucket input[type="checkbox"] {
+  margin: 3px 0 0;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+.backup-bucket input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.backup-bucket-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.backup-bucket-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+}
+.backup-bucket-hint {
+  font-size: 10.5px;
+  color: var(--text-3);
+  line-height: 1.4;
+}
+/* AniList OAuth sub-toggle — visually nested under the AniList row.
+   Indented + thin accent rule on the left reads as "sub-option of
+   the line above." */
+.backup-bucket-sub {
+  margin-left: 18px;
+  border-left: 2px solid rgba(255, 140, 40, 0.25);
+  padding-left: 10px;
+}
+.backup-bucket-sub .backup-bucket-name {
+  font-weight: 500;
+  font-size: 11.5px;
+}
+/* Primary save button — full-width, accent-coloured, reads as the
+   commit-action of the Save subsection. */
+.backup-primary-btn {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.backup-primary-btn:hover:not(:disabled) {
+  background: rgba(255, 140, 40, 0.20);
+}
+.backup-primary-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.backup-status {
+  margin: 6px 0 0;
+  min-height: 1.2em;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.backup-restore-desc {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+.backup-secondary-btn {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.backup-secondary-btn:hover {
+  border-color: rgba(255, 140, 40, 0.4);
+  background: rgba(255, 140, 40, 0.06);
+  color: var(--accent);
+}
+.backup-help-link {
+  display: block;
+  text-align: center;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-3);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 120ms ease;
+}
+.backup-help-link:hover { color: var(--accent); }

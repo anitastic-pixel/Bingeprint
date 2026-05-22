@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="sidepanel.css" />
+  <title>Smart Picks</title>
+</head>
+<body>
+  <header class="header">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span class="brand-name">Smart Picks</span>
+    </div>
+    <!-- Right-side action cluster — help "?" and refresh "↻" grouped
+         together so they read as paired controls rather than three
+         siblings spaced by justify-content:space-between (which
+         floated the "?" awkwardly in the middle of the header). -->
+    <div class="header-actions">
+      <!-- Deep-link help icon. The href is rewritten by sidepanel.js whenever
+           the surface toggle flips between Picks and Shape, so the icon always
+           points at the help.html section for the currently visible surface. -->
+      <a id="help-link" href="help.html#picks" target="_blank" rel="noopener"
+         class="header-help-dot" title="What's this surface? — opens help"
+         aria-label="Open help for this surface">?</a>
+      <button class="header-btn" id="refresh-btn" title="recompute now">↻</button>
+    </div>
+  </header>
+
+  <!-- G10: surface toggle. The side panel hosts two views — Picks
+       (the existing rec list) and Shape (the user's taste radar). -->
+  <div class="surface-toggle" role="tablist" aria-label="Side-panel view">
+    <button class="surface-tab active" data-surface="picks" role="tab" aria-selected="true">Picks</button>
+    <button class="surface-tab" data-surface="shape" role="tab" aria-selected="false">Shape</button>
+  </div>
+
+  <div class="surface surface-picks">
+    <!-- G13-deep: mode-bar is now populated dynamically by sidepanel.js
+         from the LENSES registry. Pills render as a 2-col grid;
+         sidepanel.js restores the last-active lens on load. Inline
+         static fallback keeps Peak / Comfort visible if the JS render
+         hasn't fired yet. The mode-bar-edit button opens an inline
+         overlay that lets the user hide lenses they don't use. -->
+    <div class="mode-bar-wrap">
+      <button class="mode-bar-edit" id="mode-bar-edit" type="button" aria-label="Customize visible lenses" title="Customize visible lenses">⋯</button>
+      <div class="mode-bar" id="mode-bar" role="tablist" aria-label="Recommendation lens">
+        <button class="mode-pill active" data-mode="peak" role="tab" aria-selected="true">
+          <span class="mode-name">Peak</span>
+          <span class="mode-hint">elevated taste</span>
+        </button>
+        <button class="mode-pill" data-mode="comfort" role="tab" aria-selected="false">
+          <span class="mode-name">Comfort</span>
+          <span class="mode-hint">brain-off picks</span>
+        </button>
+      </div>
+    </div>
+
+  <div class="vibe-bar" id="vibe-bar">
+    <div class="vibe-bar-head">
+      <!-- Click toggles collapse on the vibe-bar's chip grid + search
+           input. The status-legend rows below are independent now and
+           stay visible either way (see sidepanel.css comment). Chevron
+           rotates 90° via body.vibe-bar-collapsed. -->
+      <button class="vibe-bar-toggle" id="vibe-bar-toggle" type="button"
+              aria-expanded="true" title="Collapse vibe chips">
+        <span class="vibe-bar-toggle-caret" aria-hidden="true">▾</span>
+        <span class="vibe-bar-label">vibe today</span>
+      </button>
+      <span class="vibe-bar-meta">
+        <span class="vibe-count" id="vibe-count">none</span>
+        <button class="vibe-clear" id="vibe-clear" title="clear vibes">clear</button>
+      </span>
+    </div>
+    <div class="vibe-search" id="vibe-search">
+      <span class="vibe-search-icon" aria-hidden="true">⌕</span>
+      <input
+        type="text"
+        class="vibe-search-input"
+        id="vibe-search-input"
+        placeholder="try: sad, action, cute, bloody…"
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="Search vibes"
+        aria-autocomplete="list"
+        aria-controls="vibe-search-dropdown"
+      />
+      <div class="vibe-search-dropdown" id="vibe-search-dropdown" role="listbox" hidden></div>
+    </div>
+    <div class="vibe-chips" id="vibe-chips"><!-- populated by sidepanel.js --></div>
+  </div>
+
+  <div class="status-bar" id="status-bar">
+    <div class="status-bar-row-top">
+      <span class="status-text" id="status-text">loading…</span>
+      <!-- View-mode toggle: three card layouts trading detail for
+           density. Persists per user via chrome.storage.local._sidePanelViewMode. -->
+      <div class="view-mode-toggle" role="tablist" aria-label="Card view density">
+        <button type="button" class="view-mode-btn" data-view="detail"
+                role="tab" aria-selected="true" title="Full cards with tags and rationale">Detail</button>
+        <button type="button" class="view-mode-btn" data-view="casual"
+                role="tab" aria-selected="false" title="Compact cards with cover, title, and one-line reason">Casual</button>
+        <button type="button" class="view-mode-btn" data-view="compact"
+                role="tab" aria-selected="false" title="Single-line list with small thumbnail">Compact</button>
+      </div>
+      <!-- Legend is high-cost vertical real estate when shown by default
+           on every panel open — the explainer is most useful on first
+           visit, then redundant. Collapsed behind a (?) button; state
+           persists via localStorage so the choice sticks. -->
+      <button type="button" class="status-legend-toggle" id="status-legend-toggle"
+              aria-expanded="false" aria-controls="status-legend-body"
+              title="What do the # and score mean?">?</button>
+    </div>
+    <div class="status-legend-body" id="status-legend-body" hidden>
+      <span class="status-legend-row">
+        <span class="legend-rank">#</span>
+        <span class="legend-eq">=</span>
+        <span class="legend-text">your rank in today's picks — curated for you, not sorted by score</span>
+      </span>
+      <span class="status-legend-row">
+        <span class="legend-score">0.9</span>
+        <span class="legend-eq">=</span>
+        <span class="legend-text">the show's engine score — same everywhere it appears</span>
+      </span>
+    </div>
+  </div>
+
+  <main class="rec-list" id="rec-list">
+    <!-- Populated by sidepanel.js -->
+  </main>
+  </div><!-- /surface-picks -->
+
+  <!-- G09: Shape view. Hidden by default; shown when surface toggle
+       flips to "Shape". Contents populated by sidepanel.js from
+       chrome.storage.local.tasteShapeRadar.
+       Identity-primary design pass (2026-05-03): card treatment on the
+       header, tagline byline, gradient radar, pull-quote prose, bar-
+       visualized legend. -->
+  <!-- intro-armed sets every animated child to its keyframe from-state
+       (invisible / dashoffset=100 / etc.) by default so a fresh panel
+       open doesn't briefly flash the fully-rendered Shape view before
+       triggerShapeIntro adds is-entering. After the intro completes
+       the JS cleanup strips intro-armed and elements use the base CSS
+       (visible). -->
+  <div class="surface surface-shape hidden intro-armed">
+    <div class="shape-header">
+      <!-- Motion toggle — flips surfaceSettings.tasteShapeAnimateBg.
+           When off the canvas is unmounted entirely (no frozen frame, per
+           shape-canvas-painters.js's documented design); the gradient
+           family identity in this header stays put either way.  -->
+      <button class="shape-motion-toggle" id="shape-motion-toggle"
+              type="button"
+              aria-label="Toggle animated wallpaper"
+              title="Toggle the animated wallpaper behind the radar">
+        <span class="motion-icon" aria-hidden="true">✦</span><span class="motion-label">motion</span>
+      </button>
+      <span class="shape-kicker">Your taste shape</span>
+      <h2 class="shape-name" id="shape-name">—</h2>
+      <p class="shape-tagline" id="shape-tagline"></p>
+      <span class="shape-family-pill" id="shape-family-pill" hidden></span>
+      <span class="shape-caveat" id="shape-caveat" hidden>still calibrating</span>
+    </div>
+    <div class="shape-radar" id="shape-radar"><!-- SVG injected by sidepanel.js --></div>
+
+    <!-- Low-signal banner: when the user has too few rated/watched
+         shows for the radar to be honest (<~80), this overlay names
+         the situation explicitly. Pairs with .surface-shape.is-low-signal,
+         which dims the radar so we don't visually claim more than we
+         know. The fixed 80-show threshold is a UI heuristic; engine's
+         own confidenceLevel cold/thin/calibrated bands are coarser. -->
+    <div class="shape-low-signal" id="shape-low-signal" hidden>
+      <span class="shape-low-signal-title">Still learning your taste</span>
+      <span class="shape-low-signal-body" id="shape-low-signal-body">
+        Keep watching or rating shows on Crunchyroll — your shape will
+        sharpen as we see more.
+      </span>
+      <span class="shape-low-signal-meter" id="shape-low-signal-meter"></span>
+    </div>
+
+    <!-- Dev: axis sandbox. Positioned right under the radar so
+         slider movement and the radar's response are visible
+         simultaneously without scrolling. Renders only when
+         surfaceSettings.devAxisSandbox is on. Sliders override the
+         radar's axis values + signalSeriesCount in real time;
+         effects pass through the same shapeIdentityFor / proseFor /
+         taglineFor pipeline the worker uses, so the dev tool tests
+         the actual rendering chain. State persists under
+         chrome.storage.local._devAxisSandbox; reset clears it.
+         Preset dropdown options + family optgroups populated
+         dynamically by sidepanel.js's populatePresetDropdown(). -->
+    <details class="dev-sandbox" id="dev-sandbox" hidden>
+      <summary class="dev-sandbox-head">
+        <span class="dev-sandbox-title">DEV: Axis Sandbox</span>
+        <span class="dev-sandbox-hint">override radar values for visual testing</span>
+      </summary>
+      <div class="dev-sandbox-body">
+        <div class="dev-sandbox-presets">
+          <label class="dev-sandbox-preset-label">
+            Preset:
+            <select id="dev-sandbox-preset"><option value="">— pick archetype —</option></select>
+          </label>
+          <div class="dev-sandbox-confidence-buttons">
+            <button type="button" data-confidence="cold">Cold</button>
+            <button type="button" data-confidence="thin">Thin</button>
+            <button type="button" data-confidence="calibrated">Calibrated</button>
+          </div>
+          <button type="button" id="dev-sandbox-reset" class="dev-sandbox-reset">Reset to real</button>
+        </div>
+        <div class="dev-sandbox-sliders" id="dev-sandbox-sliders">
+          <!-- 8 axis sliders + 1 signalSeriesCount slider populated by sidepanel.js -->
+        </div>
+      </div>
+    </details>
+
+    <p class="shape-prose" id="shape-prose">Loading your taste shape…</p>
+    <div class="shape-axes" id="shape-axes"><!-- per-axis rows populated by sidepanel.js --></div>
+    <div class="shape-cold-cta" id="shape-cold-cta" hidden>
+      <a href="#" id="shape-cold-survey-link">Take the Quick Taste Check</a>
+      to bootstrap your shape.
+    </div>
+  </div>
+
+  <template id="card-template">
+    <article class="card">
+      <!-- target attr removed — same-tab nav via chrome.tabs.update
+           in the click handler (see sidepanel.js wireCardLink).
+           Keeps href set so the link reads correctly on hover and
+           ctrl-click still opens new tab natively. -->
+      <a class="card-cover">
+        <img class="card-cover-img" alt="" loading="lazy" />
+      </a>
+      <div class="card-body">
+        <div class="card-head">
+          <a class="card-title"></a>
+          <span class="card-final-score"></span>
+        </div>
+        <div class="card-meta">
+          <span class="card-format"></span>
+          <span class="card-year"></span>
+          <span class="card-eps"></span>
+          <span class="card-avg-score"></span>
+        </div>
+        <div class="card-tags"></div>
+        <!-- "Why this rec?" — lens-aware explainer line. Populated by
+             sidepanel.js based on the active lens (peak/comfort use
+             the existing card-because line; new lenses like
+             from-people-you-trust render a lens-specific reason). -->
+        <div class="card-lens-why"></div>
+        <div class="card-because"></div>
+        <details class="card-details">
+          <summary>why this rank?</summary>
+          <div class="sub-scores">
+            <div class="sub-row">
+              <span class="sub-label">Taste match</span>
+              <span class="sub-bar"><span class="sub-fill" data-key="taste"></span></span>
+              <span class="sub-val" data-key="taste"></span>
+            </div>
+            <div class="sub-row">
+              <span class="sub-label">Community recs</span>
+              <span class="sub-bar"><span class="sub-fill" data-key="rec"></span></span>
+              <span class="sub-val" data-key="rec"></span>
+            </div>
+            <div class="sub-row">
+              <span class="sub-label">Quality (avgScore)</span>
+              <span class="sub-bar"><span class="sub-fill" data-key="qual"></span></span>
+              <span class="sub-val" data-key="qual"></span>
+            </div>
+          </div>
+        </details>
+      </div>
+    </article>
+  </template>
+
+  <template id="empty-template">
+    <div class="empty-state">
+      <div class="empty-icon">🎬</div>
+      <div class="empty-title">No recommendations yet</div>
+      <div class="empty-hint">
+        Open Crunchyroll and let the extension sync your watch history.
+        Picks land here once we've fetched the show details we need.
+      </div>
+    </div>
+  </template>
+
+  <script src="crsmart-probe.js"></script>
+  <script src="vibe-tags.js"></script>
+  <script src="phrase-map.js"></script>
+  <script src="phrase-engine.js"></script>
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>

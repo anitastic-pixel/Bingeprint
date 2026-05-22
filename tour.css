@@ -1,0 +1,1459 @@
+/* Onboarding tour overlay — DOM-injected modal on Crunchyroll.
+   Sized as min(82vw, 1080px) × min(78vh, 700px), centered on a dim
+   backdrop. Reuses help.html's mock-vocabulary colors so slide visuals
+   feel kin to the real product surfaces.
+
+   Animation strategy: every motion lives inside @media (prefers-
+   reduced-motion: no-preference). Reduced-motion users see the final
+   state of every slide immediately — no fade, no slide-in, no
+   counter ramp (counter ramp is JS-driven and self-bails; everything
+   else is CSS keyframes inside the gated @media). */
+
+/* CSS custom properties — local copies of the extension's tokens.
+   Scoped to .crsmart-tour-overlay so we don't pollute CR's globals. */
+.crsmart-tour-overlay {
+  --bg: #14110f;
+  --card: #1c1916;
+  --line: rgba(255, 255, 255, 0.10);
+  --text: #f0e8df;
+  --muted: #9a8e80;
+  --accent: #ff8c28;
+  --accent-soft: rgba(255, 140, 40, 0.12);
+
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  background: rgba(0, 0, 0, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text);
+  /* Don't inherit CR's body cursor / pointer-events oddities. */
+  cursor: default;
+  pointer-events: auto;
+  /* Subtle entry — fades the backdrop in. Modal slides up from below. */
+  animation: crsmart-tour-overlay-in 220ms ease-out both;
+}
+
+.crsmart-tour-modal {
+  position: relative;
+  width: min(82vw, 1080px);
+  height: min(78vh, 700px);
+  min-width: 640px;
+  min-height: 480px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  /* Container-query unit context for the stage. Modal centers stage
+     so the scale transform shrinks/grows from the modal's middle. */
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: crsmart-tour-modal-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Stage — fixed-design wrapper. All slide content layouts at 1080×700
+   regardless of how big or small the modal is; this transform: scale
+   shrinks (or grows) the whole thing to fit. Width/height ratios are
+   computed via container-query units so the stage scales smoothly as
+   the user zooms or resizes. min(...) picks the smaller axis ratio so
+   the stage always fits without overflowing.
+
+   Why this approach: previously every internal pixel size (font,
+   padding, gap, spike length) was a fixed px, so narrow viewports
+   felt cramped (content too big for modal) and wide viewports felt
+   sparse (content too small for modal). Scaling the entire stage as
+   one unit keeps the design's proportions perfectly consistent at
+   every viewport. */
+.crsmart-tour-stage {
+  position: relative;
+  width: 1080px;
+  height: 700px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  transform-origin: center center;
+  transform: scale(min(calc(100cqw / 1080px), calc(100cqh / 700px)));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crsmart-tour-overlay,
+  .crsmart-tour-modal { animation: none; }
+}
+
+@keyframes crsmart-tour-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes crsmart-tour-modal-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);     }
+}
+
+/* Closing — symmetric fade-out. Pointer events disabled so the user
+   can't re-trigger anything while the modal animates out (the JS has
+   already nulled the module state at this point, so a click would
+   no-op anyway, but the cursor change is the right affordance). */
+.crsmart-tour-overlay.is-closing {
+  pointer-events: none;
+  animation: crsmart-tour-overlay-out 220ms ease-in forwards;
+}
+.crsmart-tour-overlay.is-closing .crsmart-tour-modal {
+  animation: crsmart-tour-modal-out 240ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .crsmart-tour-overlay.is-closing,
+  .crsmart-tour-overlay.is-closing .crsmart-tour-modal { animation: none; }
+}
+@keyframes crsmart-tour-overlay-out {
+  to { opacity: 0; }
+}
+@keyframes crsmart-tour-modal-out {
+  to { opacity: 0; transform: translateY(10px) scale(0.985); }
+}
+
+/* Close ✕ button — top-right, always visible. */
+.crsmart-tour-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+.crsmart-tour-close:hover {
+  color: var(--accent);
+  background: rgba(255, 140, 40, 0.10);
+  border-color: rgba(255, 140, 40, 0.40);
+}
+
+/* Track viewport — fixed-position clip box that holds the moving track.
+   The track itself translates via transform: translateX(-N * 100%) to
+   show different slides; if we put overflow:hidden on the track, it
+   would clip the slides BEFORE the translate brought them into view
+   (clipping is in the track's own coordinate system, BEFORE its own
+   transform), so navigation would silently swallow every slide past 1.
+   The viewport stays put and clips children to its bounds; the track
+   slides through it like film through a projector. */
+.crsmart-tour-track-viewport {
+  flex: 1;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Slide track + slides — flex row, transform translates between them. */
+.crsmart-tour-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .crsmart-tour-track { transition: none; }
+}
+.crsmart-tour-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  padding: 56px 64px 24px;
+  overflow: hidden;
+}
+.crsmart-slide-content {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(360px, 1.3fr);
+  gap: 48px;
+  align-items: center;
+}
+.slide-text { display: flex; flex-direction: column; gap: 14px; }
+.slide-title {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0;
+}
+.slide-title em {
+  font-style: italic;
+  color: var(--accent);
+}
+.slide-body {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 0;
+  max-width: 460px;
+}
+.slide-body em {
+  font-style: italic;
+  color: var(--text);
+}
+
+/* Keyboard-shortcut hint — only on slide 1, low visual weight,
+   auto-fades after a few seconds so it teaches the gesture without
+   permanently cluttering the slide. <kbd> elements get pill styling. */
+.slide-keyboard-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 12px 0 0;
+  opacity: 0;
+  letter-spacing: 0.2px;
+}
+.slide-keyboard-hint kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 0 1px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10.5px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 4px;
+  vertical-align: middle;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* Fade in late (after the main slide animation), linger ~5s, fade out */
+  .slide-1.is-playing .slide-keyboard-hint {
+    animation: keyboard-hint-pulse 9s 2700ms ease-in-out forwards;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide-keyboard-hint { opacity: 1; }
+}
+@keyframes keyboard-hint-pulse {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Slide-4 caption — secondary body text below the main body. Slightly
+   smaller + dimmer to read as supporting copy. */
+.slide-4-caption {
+  font-size: 13px;
+  color: var(--muted);
+  font-style: italic;
+}
+.slide-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Footer (dots + skip + nav) ─────────────────────────────── */
+.crsmart-tour-footer {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 18px 28px 22px;
+  border-top: 1px solid var(--line);
+  gap: 16px;
+}
+.crsmart-tour-skip {
+  justify-self: start;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 4px 8px;
+}
+.crsmart-tour-skip:hover { color: var(--accent); }
+
+.crsmart-tour-dots {
+  display: flex;
+  gap: 10px;
+  justify-self: center;
+}
+.crsmart-tour-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+.crsmart-tour-dot:hover:not(.is-active) {
+  /* Hover affordance — telegraphs that dots are clickable jumps,
+     not just decorative progress markers. Bump scale + brighten the
+     border so users discover the navigation by hovering. */
+  transform: scale(1.35);
+  border-color: var(--accent);
+  background: rgba(255, 140, 40, 0.18);
+}
+.crsmart-tour-dot:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.crsmart-tour-dot.is-visited {
+  background: rgba(255, 140, 40, 0.5);
+  border-color: rgba(255, 140, 40, 0.5);
+}
+.crsmart-tour-dot.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.3);
+  box-shadow: 0 0 0 3px rgba(255, 140, 40, 0.18);
+}
+
+.crsmart-tour-nav {
+  justify-self: end;
+  display: flex;
+  gap: 10px;
+}
+.crsmart-tour-prev,
+.crsmart-tour-next {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.crsmart-tour-prev:hover:not(:disabled),
+.crsmart-tour-next:hover:not(:disabled) {
+  background: rgba(255, 140, 40, 0.10);
+  border-color: rgba(255, 140, 40, 0.40);
+  color: var(--accent);
+}
+.crsmart-tour-prev:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.crsmart-tour-next {
+  background: var(--accent-soft);
+  border-color: rgba(255, 140, 40, 0.5);
+  color: var(--accent);
+}
+.crsmart-tour-next:hover:not(:disabled) {
+  background: rgba(255, 140, 40, 0.20);
+}
+
+/* ── Slide 1 — score card landing on a CR-style hero ───────── */
+/* Hero is 16:9 (was 16:11) so the title at the top and the card at
+   the bottom sit closer together — less empty gradient between them.
+   The hero still reads as a series-page abstraction without feeling
+   under-filled. */
+.slide-1 .mock-hero {
+  width: 100%;
+  max-width: 520px;
+  aspect-ratio: 16 / 9;
+  background:
+    radial-gradient(60% 80% at 30% 30%, rgba(255, 140, 40, 0.18), transparent 70%),
+    linear-gradient(135deg, #2a221c 0%, #16110d 60%);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  position: relative;
+  overflow: hidden;
+}
+.slide-1 .mock-hero-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(70% 60% at 70% 80%, rgba(180, 80, 255, 0.15), transparent 60%);
+}
+/* Show cover on the LEFT side of the hero — matches the real CR
+   series-page layout where the portrait cover sits next to title.
+   The actual background-image is set inline via tour.js (using
+   chrome.runtime.getURL), because content-script CSS can't reference
+   extension assets via relative URLs. The properties here cover the
+   layout/sizing/border + the background-size/position behavior that
+   shapes how the inline image renders. */
+.slide-1 .mock-hero-poster {
+  position: absolute;
+  top: 18px;
+  left: 22px;
+  width: 88px;
+  height: 130px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+/* Hero meta — fake CR series title + episode count, top-left.
+   left:124 leaves room for the 88px poster + 14px gap on the
+   left edge of the hero. Reads as a real series page where the
+   title sits beside the cover art. */
+.slide-1 .mock-hero-meta {
+  position: absolute;
+  top: 24px;
+  left: 124px;
+  right: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+.slide-1 .mock-hero-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  letter-spacing: 0.2px;
+}
+.slide-1 .mock-hero-sub {
+  font-size: 11px;
+  color: rgba(240, 232, 223, 0.72);
+  letter-spacing: 0.4px;
+}
+.slide-1 .mock-hero-card {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 16px;
+  background: linear-gradient(180deg, rgba(28, 23, 20, 0.95), rgba(20, 16, 13, 0.95));
+  border: 1px solid rgba(255, 140, 40, 0.35);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  transform: translateY(20px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .slide-1.is-playing .mock-hero-card {
+    animation: card-rise-in 700ms 200ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide-1 .mock-hero-card { opacity: 1; transform: none; }
+}
+@keyframes card-rise-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-1 .mock-card-ring {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+}
+.slide-1 .mock-card-ring svg {
+  width: 64px;
+  height: 64px;
+  transform: rotate(-90deg);
+}
+.slide-1 .mock-ring-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 5;
+}
+.slide-1 .mock-ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .slide-1.is-playing .mock-ring-fill {
+    animation: ring-fill 1400ms 700ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide-1 .mock-ring-fill { stroke-dashoffset: var(--ring-end, 32); }
+}
+/* ring-fill end is per-card via --ring-end inline style. With score N
+   out of 100, --ring-end = 176 × (1 − N/100), so the fill proportion
+   tracks the score. Fallback 32 matches the original Frieren-92 visual
+   for any consumer that doesn't set --ring-end. */
+@keyframes ring-fill {
+  to { stroke-dashoffset: var(--ring-end, 32); }
+}
+.slide-1 .mock-card-score {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.slide-1 .mock-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.slide-1 .mock-tier {
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+  align-self: flex-start;
+  display: inline-block;
+  white-space: nowrap;
+  /* Default colour matches mock-tier-trust so any tier without an
+     explicit class falls back to the original Frieren-92 styling. */
+  background: #b450ff;
+  color: #1a0014;
+  opacity: 0;
+}
+/* Tier colour ladder — mirrors help.css's mock-tier-* palette so the
+   tour and the help page agree on what each tier looks like. */
+.slide-1 .mock-tier-trust    { background: #b450ff; color: #1a0014; }
+.slide-1 .mock-tier-worth    { background: #4caf50; color: #0a1a0a; }
+.slide-1 .mock-tier-stretch  { background: #ff8c28; color: #1a0e00; }
+.slide-1 .mock-tier-probably { background: #a09a8a; color: #1a1810; }
+.slide-1 .mock-tier-skip     { background: #a64d4d; color: #1a1010; }
+@media (prefers-reduced-motion: no-preference) {
+  .slide-1.is-playing .mock-tier {
+    animation: chip-fade-in 360ms 1900ms ease-out forwards;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide-1 .mock-tier { opacity: 1; }
+}
+.slide-1 .mock-card-title { font-size: 14px; font-weight: 600; }
+.slide-1 .mock-card-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+/* Chip base — neutral. Polarity (.mock-chip-pos / .mock-chip-neg) sets
+   the colour. Negative chips appear on cycle cards in the WORTH A SHOT,
+   STRETCH, and SKIP tiers — the tour deliberately shows them so users
+   learn the card's full vocabulary, not just the flattering case. */
+.slide-1 .mock-chip {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  opacity: 0;
+}
+.slide-1 .mock-chip-pos {
+  border-color: rgba(60, 200, 120, 0.25);
+  background: rgba(60, 200, 120, 0.08);
+  color: #5fdb91;
+}
+.slide-1 .mock-chip-neg {
+  border-color: rgba(255, 80, 80, 0.25);
+  background: rgba(255, 80, 80, 0.08);
+  color: #ff8585;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .slide-1.is-playing .mock-chip:nth-child(1) { animation: chip-fade-in 360ms 2150ms ease-out forwards; }
+  .slide-1.is-playing .mock-chip:nth-child(2) { animation: chip-fade-in 360ms 2300ms ease-out forwards; }
+  .slide-1.is-playing .mock-chip:nth-child(3) { animation: chip-fade-in 360ms 2450ms ease-out forwards; }
+  .slide-1.is-playing .mock-chip:nth-child(4) { animation: chip-fade-in 360ms 2600ms ease-out forwards; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide-1 .mock-chip { opacity: 1; }
+}
+@keyframes chip-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Slide 1 cycle — 5-card ladder rotates every 4s ──────────
+   Initial render uses no .is-cycle-card class, so the card runs the
+   slow .is-playing animations above (matching the original 2.6s
+   narrative reveal). Subsequent cards are inserted via DOM replace
+   with .is-cycle-card on the new node, picking up the faster
+   animation timings here so the cycle reads as snappy rather than
+   re-pacing the full reveal each tick.
+
+   Why DOM replacement rather than mutating the existing card: CSS
+   animation restart on an existing element is unreliable (browser
+   coalesces animation-name changes), but freshly-inserted elements
+   always start their declared animations from t=0. Replace is the
+   cheapest, most reliable retrigger. */
+.slide-1 .mock-hero-poster,
+.slide-1 .mock-hero-meta {
+  transition: opacity 220ms ease;
+}
+.slide-1 .mock-hero-poster.is-fading,
+.slide-1 .mock-hero-meta.is-fading {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide-1 .mock-hero-poster,
+  .slide-1 .mock-hero-meta {
+    transition: none;
+  }
+}
+
+/* Leaving — card fades down before being replaced. Specificity
+   (0,3,1) — matches .is-cycle-card's specificity, so this rule is
+   declared LATER in the file to win the cascade when both classes
+   are present. (In practice the cycle removes .is-cycle-card before
+   adding .is-leaving, so only one of the two rules ever applies.) */
+@keyframes card-fall-out {
+  to { opacity: 0; transform: translateY(10px); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .slide-1.is-playing .mock-hero-card.is-leaving {
+    animation: card-fall-out 280ms ease-in forwards;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide-1 .mock-hero-card.is-leaving {
+    opacity: 0;
+  }
+}
+
+/* Cycle card — same animations as the initial reveal, shorter delays
+   (0/150/540/660-990ms vs. 200/700/1900/2150-2600ms). The total
+   animation length is ~1.3s, leaving ~2.7s of rest within the 4s
+   cycle for the user to read the chips. */
+@media (prefers-reduced-motion: no-preference) {
+  .slide-1.is-playing .mock-hero-card.is-cycle-card {
+    animation: card-rise-in 500ms 0ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+  .slide-1.is-playing .mock-hero-card.is-cycle-card .mock-ring-fill {
+    animation: ring-fill 800ms 150ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+  .slide-1.is-playing .mock-hero-card.is-cycle-card .mock-tier {
+    animation: chip-fade-in 320ms 540ms ease-out forwards;
+  }
+  .slide-1.is-playing .mock-hero-card.is-cycle-card .mock-chip:nth-child(1) {
+    animation: chip-fade-in 280ms 660ms ease-out forwards;
+  }
+  .slide-1.is-playing .mock-hero-card.is-cycle-card .mock-chip:nth-child(2) {
+    animation: chip-fade-in 280ms 770ms ease-out forwards;
+  }
+  .slide-1.is-playing .mock-hero-card.is-cycle-card .mock-chip:nth-child(3) {
+    animation: chip-fade-in 280ms 880ms ease-out forwards;
+  }
+  .slide-1.is-playing .mock-hero-card.is-cycle-card .mock-chip:nth-child(4) {
+    animation: chip-fade-in 280ms 990ms ease-out forwards;
+  }
+}
+
+/* ── Slide 2 — two ranked lists side-by-side ───────────────── */
+/* The .slide-visual element ALSO carries .slide-2-lists, so this
+   selector wins over the .slide-visual flex declaration: the element
+   becomes a grid (overriding display:flex). It still inherits
+   height:100% from .slide-visual, so the grid stretches to 418px.
+   align-items: center vertically centers each .mock-list item inside
+   the tall grid cell — which puts the lists at the same vertical
+   center as the text on the left, instead of pinned to the top. */
+.slide-2-lists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+  max-width: 540px;
+}
+.mock-list {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 12.5px;
+}
+.mock-list-you {
+  border-color: rgba(255, 140, 40, 0.35);
+  background: rgba(255, 140, 40, 0.04);
+}
+.mock-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+.mock-list-tag {
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.mock-list-tag-popular {
+  color: rgba(240, 232, 223, 0.55);
+  background: rgba(255, 255, 255, 0.04);
+}
+.mock-list-tag-yours {
+  color: var(--accent);
+  background: rgba(255, 140, 40, 0.10);
+  border-color: rgba(255, 140, 40, 0.35);
+}
+.mock-list-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mock-list-items li {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.mock-list-items li > span:first-child { color: var(--muted); }
+.mock-list-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mock-list-score {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Both columns fade in sequentially — CR first (the "default") then
+   yours (the "alternative"). Items within each column stagger so the
+   list builds visibly. With the column tags doing the labelling work,
+   we don't need to dim CR — the comparison is in the headers. */
+.slide-2 .mock-list-cr li,
+.slide-2 .mock-list-you li {
+  opacity: 0;
+  transform: translateX(-6px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .slide-2.is-playing .mock-list-cr li:nth-child(1) { animation: list-fade-in 400ms  200ms ease-out forwards; }
+  .slide-2.is-playing .mock-list-cr li:nth-child(2) { animation: list-fade-in 400ms  300ms ease-out forwards; }
+  .slide-2.is-playing .mock-list-cr li:nth-child(3) { animation: list-fade-in 400ms  400ms ease-out forwards; }
+  .slide-2.is-playing .mock-list-cr li:nth-child(4) { animation: list-fade-in 400ms  500ms ease-out forwards; }
+  .slide-2.is-playing .mock-list-cr li:nth-child(5) { animation: list-fade-in 400ms  600ms ease-out forwards; }
+
+  .slide-2.is-playing .mock-list-you li:nth-child(1) { animation: list-fade-in 400ms 1100ms ease-out forwards; }
+  .slide-2.is-playing .mock-list-you li:nth-child(2) { animation: list-fade-in 400ms 1200ms ease-out forwards; }
+  .slide-2.is-playing .mock-list-you li:nth-child(3) { animation: list-fade-in 400ms 1300ms ease-out forwards; }
+  .slide-2.is-playing .mock-list-you li:nth-child(4) { animation: list-fade-in 400ms 1400ms ease-out forwards; }
+  .slide-2.is-playing .mock-list-you li:nth-child(5) { animation: list-fade-in 400ms 1500ms ease-out forwards; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide-2 .mock-list-cr li,
+  .slide-2 .mock-list-you li { opacity: 1; transform: none; }
+}
+@keyframes list-fade-in {
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Side-panel + vibes slide (inserted at position 3) ─────
+   Mock side panel that mimics the real Smart Picks panel layout —
+   header with mode label, vibe-chip filter row, ranked list with
+   per-show scores. Class is .slide-side-panel to avoid colliding
+   with .slide-3's privacy-slide rules. */
+.slide-side-panel .slide-sparkle {
+  display: inline-block;
+  color: var(--accent);
+  font-size: 1.2em;
+  vertical-align: -1px;
+}
+.mock-sidepanel {
+  width: 100%;
+  max-width: 380px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+.mock-sidepanel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.mock-sidepanel-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--text);
+  text-transform: uppercase;
+}
+.mock-sidepanel-mode {
+  font-size: 11px;
+  color: var(--accent);
+  background: rgba(255, 140, 40, 0.10);
+  border: 1px solid rgba(255, 140, 40, 0.35);
+  border-radius: 12px;
+  padding: 2px 10px;
+  letter-spacing: 0.6px;
+  font-weight: 600;
+}
+.mock-vibes-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.015);
+}
+.mock-vibe-label {
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-right: 2px;
+}
+/* Chips render as <button> for keyboard a11y — these resets undo the
+   user-agent button chrome (background, font, cursor) so the visual
+   matches the side-panel pill aesthetic. position: relative anchors
+   the .is-active pulse pseudo-element. */
+.mock-vibe-chip {
+  font-family: inherit;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: pointer;
+  position: relative;
+  transition: background 180ms ease, color 180ms ease, border-color 180ms ease;
+}
+.mock-vibe-chip:hover:not(.is-active) {
+  border-color: rgba(255, 140, 40, 0.45);
+  color: var(--text);
+  background: rgba(255, 140, 40, 0.06);
+}
+.mock-vibe-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.mock-vibe-chip.is-active {
+  background: rgba(255, 140, 40, 0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* Pulse on the active chip — pseudo-element so toggling .is-active
+   between chips at user-click time doesn't conflict with the
+   per-nth-child chip-fade-in animation declared on the chip itself.
+   (Animation properties don't compose across cascade rules; declaring
+   the pulse on the chip would clobber the fade-in.) */
+.mock-vibe-chip.is-active::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 12px;
+  pointer-events: none;
+  animation: vibe-pulse 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mock-vibe-chip.is-active::after { animation: none; }
+}
+.mock-sidepanel-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+}
+.mock-sidepanel-list li {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.mock-sidepanel-list li:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+.sp-rank   { color: var(--muted); text-align: right; }
+.sp-title  { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-score  { color: var(--accent); font-weight: 700; }
+
+/* Animations: panel scales in, list items stagger from top, vibes
+   appear last. Active vibe gently pulses to telegraph "tap to filter." */
+.slide-side-panel .mock-sidepanel,
+.slide-side-panel .mock-sidepanel-list li,
+.slide-side-panel .mock-vibe-chip,
+.slide-side-panel .mock-vibe-label {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .slide-side-panel.is-playing .mock-sidepanel {
+    animation: side-panel-in 500ms 200ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+  .slide-side-panel.is-playing .mock-sidepanel-list li:nth-child(1) { animation: chip-fade-in 360ms 700ms ease-out forwards; }
+  .slide-side-panel.is-playing .mock-sidepanel-list li:nth-child(2) { animation: chip-fade-in 360ms 800ms ease-out forwards; }
+  .slide-side-panel.is-playing .mock-sidepanel-list li:nth-child(3) { animation: chip-fade-in 360ms 900ms ease-out forwards; }
+  .slide-side-panel.is-playing .mock-sidepanel-list li:nth-child(4) { animation: chip-fade-in 360ms 1000ms ease-out forwards; }
+  .slide-side-panel.is-playing .mock-sidepanel-list li:nth-child(5) { animation: chip-fade-in 360ms 1100ms ease-out forwards; }
+  .slide-side-panel.is-playing .mock-vibe-label                     { animation: chip-fade-in 360ms 1500ms ease-out forwards; }
+  /* Note: nth-child(2) is the FIRST .mock-vibe-chip — :nth-child counts
+     across ALL siblings, and the .mock-vibe-label sits at position 1.
+     Rules cover the four chips at positions 2–5. The active chip's
+     pulse lives on the .mock-vibe-chip.is-active::after pseudo-element
+     (declared above, outside the per-slide animation block) so toggling
+     .is-active between chips at user-click time doesn't disturb these
+     fade-in animations — animation properties don't compose across
+     cascade rules, so a separate .is-active animation declaration here
+     would clobber chip-fade-in. */
+  .slide-side-panel.is-playing .mock-vibe-chip:nth-child(2) { animation: chip-fade-in 360ms 1600ms ease-out forwards; }
+  .slide-side-panel.is-playing .mock-vibe-chip:nth-child(3) { animation: chip-fade-in 360ms 1700ms ease-out forwards; }
+  .slide-side-panel.is-playing .mock-vibe-chip:nth-child(4) { animation: chip-fade-in 360ms 1800ms ease-out forwards; }
+  .slide-side-panel.is-playing .mock-vibe-chip:nth-child(5) { animation: chip-fade-in 360ms 1900ms ease-out forwards; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide-side-panel .mock-sidepanel,
+  .slide-side-panel .mock-sidepanel-list li,
+  .slide-side-panel .mock-vibe-chip,
+  .slide-side-panel .mock-vibe-label { opacity: 1; }
+}
+@keyframes side-panel-in {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+@keyframes vibe-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 140, 40, 0.25); }
+  50%      { box-shadow: 0 0 0 6px rgba(255, 140, 40, 0); }
+}
+
+/* List re-rank — items fade out + slide right, then the new items
+   fade in + slide from left with a per-row stagger. Reads as the list
+   "shuffling" rather than snapping.
+
+   Specificity needs to clear the original .slide-side-panel.is-playing
+   per-nth-child rules (specificity 0,3,2), so these chain .is-playing
+   too (0,4,2). Once a swap has happened, .is-swapping-in stays on the
+   list permanently — its forwards fill holds items at opacity:1, and
+   removing it would re-trigger the original 700ms-delayed chip-fade-in
+   from t=0 (items would go invisible for ~700ms before fading back
+   in). Subsequent clicks just rename .is-swapping-in to .is-swapping-out
+   and back; both rules override .is-playing equally. */
+@keyframes sp-list-swap-out {
+  to { opacity: 0; transform: translateX(8px); }
+}
+@keyframes sp-list-swap-in {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .slide-side-panel.is-playing .mock-sidepanel-list.is-swapping-out li {
+    animation: sp-list-swap-out 140ms ease-out forwards;
+  }
+  .slide-side-panel.is-playing .mock-sidepanel-list.is-swapping-in li:nth-child(1) { animation: sp-list-swap-in 260ms 0ms   ease-out forwards; }
+  .slide-side-panel.is-playing .mock-sidepanel-list.is-swapping-in li:nth-child(2) { animation: sp-list-swap-in 260ms 40ms  ease-out forwards; }
+  .slide-side-panel.is-playing .mock-sidepanel-list.is-swapping-in li:nth-child(3) { animation: sp-list-swap-in 260ms 80ms  ease-out forwards; }
+  .slide-side-panel.is-playing .mock-sidepanel-list.is-swapping-in li:nth-child(4) { animation: sp-list-swap-in 260ms 120ms ease-out forwards; }
+  .slide-side-panel.is-playing .mock-sidepanel-list.is-swapping-in li:nth-child(5) { animation: sp-list-swap-in 260ms 160ms ease-out forwards; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Reduced motion: just snap. The is-swapping classes still toggle so
+     the JS swap path doesn't need a separate branch, but no animation
+     plays. */
+  .mock-sidepanel-list.is-swapping-out li,
+  .mock-sidepanel-list.is-swapping-in li { opacity: 1; transform: none; }
+}
+
+/* ── Slide 3 — privacy reassurance, lock as centerpiece ──────
+   Layout: lock+label dominates the visual area; the four signal
+   chips orbit the lock at moderate distance with concrete numbers
+   ("47 watched") to make the abstraction tangible.
+
+   Graph is constrained to 380×380 (centered in slide-visual via the
+   parent's flex centering) so the signals at the corners are ~140px
+   from the lock instead of ~380px. The relationship reads as a tight
+   cluster — signals arriving toward the lock — rather than four
+   isolated chips. */
+.slide-3-graph {
+  width: 380px;
+  max-width: 100%;
+  height: 380px;
+  position: relative;
+  /* Shift the entire cluster (lock + signals + connecting lines)
+     a bit to the right so the lock visually sits closer to the
+     right side of the modal, putting more breathing room between
+     the text on the left and the visualization. Children inherit
+     the shift since they're absolutely positioned within this
+     container. */
+  transform: translateX(50px);
+}
+.signal {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  /* Solid card background so the connecting lines (which sit behind
+     in DOM order) are completely obscured under the pill instead of
+     showing through a translucent fill. */
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0;
+}
+.signal-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 14px;
+  flex: 0 0 auto;
+}
+.signal-text {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.signal-count {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.signal-label {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.2px;
+}
+.signal-watch { top:  6%; left:  0; }
+.signal-rate  { top:  6%; right: 0; }
+.signal-list  { bottom: 6%; left:  0; }
+.signal-tap   { bottom: 6%; right: 0; }
+
+/* Position so the LOCK CIRCLE (not the .engine-node bbox) is centered
+   at the graph's geometric center. Without this offset, the bbox
+   center sits at 50% — which puts the lock visibly above-and-left of
+   center because the column also contains the label below it. The
+   shifted top + transform put the lock circle exactly at (190, 190)
+   in the 380×380 graph; the label hangs naturally below. */
+.engine-node {
+  position: absolute;
+  top: calc(50% - 48px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+}
+/* Big lock badge — the dominant visual element. Circular plate so
+   the signals around it read as orbiting toward this center. Solid
+   card-color base layer so the dashed connecting lines don't show
+   through the lock face; the orange tint stays via the gradient
+   layer on top. Subtle scale + box-shadow pulse draws the eye to
+   the lock as the visual centerpiece without competing with the
+   floating signals. */
+.engine-lock-big {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 140, 40, 0.32), transparent 70%),
+    linear-gradient(rgba(255, 140, 40, 0.10), rgba(255, 140, 40, 0.10)),
+    var(--card);
+  border: 2px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  box-shadow: 0 0 28px rgba(255, 140, 40, 0.18);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .slide-3.is-playing .engine-lock-big {
+    animation: lock-pulse 2.8s 1700ms ease-in-out infinite;
+  }
+}
+@keyframes lock-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 28px rgba(255, 140, 40, 0.18);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 36px rgba(255, 140, 40, 0.32);
+  }
+}
+.engine-lock-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--text);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Connecting lines — dashed accent strokes from each signal anchor
+   to the central lock. Sit behind the signals/lock via DOM order +
+   no z-index. Lock is the static "anchor" — only the signals + lines
+   animate. Reinforces the visual of "inputs flowing into the engine
+   that stays in your browser." */
+.slide-3-connections {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+}
+.slide-3-connections line {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 6;
+  opacity: 0.40;
+  stroke-linecap: round;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Each signal: arrival animation (one-shot), then perpetual gentle
+     bob in place. Comma-separated shorthand; the second animation
+     starts after the first's `forwards` fill takes effect, so the
+     transform handoff doesn't visibly jump.
+
+     Different durations + delays per signal so they don't oscillate
+     in lockstep — looks alive instead of mechanical. */
+  .slide-3.is-playing .signal-watch {
+    animation: signal-arrive-tl 700ms 200ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards,
+               float-bob 2.4s 1500ms ease-in-out infinite;
+  }
+  .slide-3.is-playing .signal-rate {
+    animation: signal-arrive-tr 700ms 350ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards,
+               float-bob 2.7s 1700ms ease-in-out infinite reverse;
+  }
+  .slide-3.is-playing .signal-list {
+    animation: signal-arrive-bl 700ms 500ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards,
+               float-bob 2.5s 1900ms ease-in-out infinite reverse;
+  }
+  .slide-3.is-playing .signal-tap {
+    animation: signal-arrive-br 700ms 650ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards,
+               float-bob 2.9s 2100ms ease-in-out infinite;
+  }
+  /* Opacity-only animation — chip-fade-in animates transform too,
+     which would clobber engine-node's translateX(-50%) baseline and
+     leave the lock anchored at x=190 instead of centered there. */
+  .slide-3.is-playing .engine-node  { animation: engine-fade-in 600ms 1100ms ease-out forwards; }
+  /* Connection lines fade in just before the lock arrives, then dash
+     offset perpetually marches toward the lock — looks like data
+     streaming in. */
+  .slide-3.is-playing .slide-3-connections {
+    animation: chip-fade-in 600ms 1300ms ease-out forwards;
+  }
+  .slide-3.is-playing .slide-3-connections line {
+    animation: line-flow 2.4s linear infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide-3 .signal,
+  .slide-3 .engine-node,
+  .slide-3 .slide-3-connections { opacity: 1; }
+}
+@keyframes signal-arrive-tl { from { opacity: 0; transform: translate(-12px, -12px); } to { opacity: 1; transform: none; } }
+@keyframes signal-arrive-tr { from { opacity: 0; transform: translate( 12px, -12px); } to { opacity: 1; transform: none; } }
+@keyframes signal-arrive-bl { from { opacity: 0; transform: translate(-12px,  12px); } to { opacity: 1; transform: none; } }
+@keyframes signal-arrive-br { from { opacity: 0; transform: translate( 12px,  12px); } to { opacity: 1; transform: none; } }
+/* Gentle float — small translateY + tiny translateX wobble.
+   Reduced to ~3px peak so the pill stays visually attached to its
+   connecting line endpoint (which is anchored at the pill's border).
+   Larger amplitude makes the line look detached from a floating pill. */
+@keyframes float-bob {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(1px, -3px); }
+}
+/* Dash march — offset decreases so dashes move along the path
+   from corner anchor toward the lock. 2.4s cycle is slow enough
+   to feel calm, fast enough that one dash visibly traverses the
+   line during a typical viewer's attention span on this slide. */
+@keyframes line-flow {
+  to { stroke-dashoffset: -20; }
+}
+/* Engine-node fade-in — opacity only, so the underlying
+   translateX(-50%) baseline is preserved and the lock stays
+   horizontally centered at the graph's geometric center. */
+@keyframes engine-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Slide 4 — radar shape drawing in spoke-by-spoke ───────── */
+.slide-4 .mock-radar {
+  width: 100%;
+  max-width: 460px;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+.slide-4 .mock-radar-ring {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.10);
+  stroke-width: 1;
+}
+.slide-4 .mock-radar-spoke {
+  stroke: rgba(255, 255, 255, 0.20);
+  stroke-width: 1.5;
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+}
+/* Three reference taste-shapes, each with its own hue identity, that
+   cycle one at a time to teach the user "your shape will be unique."
+   Each polygon is invisible by default; the cycle keyframes fade them
+   in/out in sequence after the spokes draw. The transform-origin
+   matches the radar's center (200, 160) so the polygon scales-in
+   feels anchored to the visualization. */
+.slide-4 .mock-radar-shape {
+  stroke-width: 2;
+  stroke-linejoin: round;
+  opacity: 0;
+  transform: scale(0.85);
+  transform-origin: 200px 160px;
+}
+.slide-4 .shape-auteur {
+  fill: rgba(255, 140, 40, 0.22);
+  stroke: #ff8c28;
+  filter: drop-shadow(0 0 8px rgba(255, 140, 40, 0.32));
+}
+.slide-4 .shape-comfort {
+  fill: rgba(180, 80, 255, 0.22);
+  stroke: #b450ff;
+  filter: drop-shadow(0 0 8px rgba(180, 80, 255, 0.32));
+}
+.slide-4 .shape-spectacle {
+  fill: rgba(231, 76, 60, 0.22);
+  stroke: #e74c3c;
+  filter: drop-shadow(0 0 8px rgba(231, 76, 60, 0.32));
+}
+/* Labels visible from the start — they're the *content*, not the
+   flourish. Without them the radar shape is meaningless. The polygon
+   fill remains animated as the "reveal" moment. */
+.slide-4 .mock-radar-label {
+  fill: var(--muted);
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .slide-4.is-playing .mock-radar-spoke {
+    animation: spoke-draw 500ms ease-out forwards;
+  }
+  .slide-4.is-playing .mock-radar-spoke:nth-of-type(1) { animation-delay: 100ms; }
+  .slide-4.is-playing .mock-radar-spoke:nth-of-type(2) { animation-delay: 200ms; }
+  .slide-4.is-playing .mock-radar-spoke:nth-of-type(3) { animation-delay: 300ms; }
+  .slide-4.is-playing .mock-radar-spoke:nth-of-type(4) { animation-delay: 400ms; }
+  .slide-4.is-playing .mock-radar-spoke:nth-of-type(5) { animation-delay: 500ms; }
+  .slide-4.is-playing .mock-radar-spoke:nth-of-type(6) { animation-delay: 600ms; }
+  .slide-4.is-playing .mock-radar-spoke:nth-of-type(7) { animation-delay: 700ms; }
+  .slide-4.is-playing .mock-radar-spoke:nth-of-type(8) { animation-delay: 800ms; }
+  /* Shape entry — runs ONCE on first slide-play, fading the auteur
+     shape in smoothly. Without this, the cycle's 0% keyframe (opacity:1)
+     would pop the auteur shape into existence with no fade. The cycle
+     animation takes over after the entry completes; both have matching
+     opacity:1 at the handoff so the transition is seamless. */
+  .slide-4.is-playing .shape-auteur {
+    animation:
+      shape-entry 800ms 1300ms ease-out backwards,
+      shape-cycle-1 12s 2100ms ease-in-out infinite;
+  }
+  .slide-4.is-playing .shape-comfort {
+    animation: shape-cycle-2 12s 2100ms ease-in-out infinite;
+  }
+  .slide-4.is-playing .shape-spectacle {
+    animation: shape-cycle-3 12s 2100ms ease-in-out infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide-4 .mock-radar-spoke { stroke-dashoffset: 0; }
+  /* Reduced motion: just show the auteur shape statically. */
+  .slide-4 .shape-auteur { opacity: 1; transform: scale(1); }
+}
+@keyframes spoke-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes shape-entry {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+/* Three shapes share a 12s cycle. Each shape's "fully visible"
+   window is ~25% of the cycle (~3s); crossfade between adjacent
+   shapes is ~8% (~960ms) — slow enough to read as a graceful
+   morph instead of a flicker. The wrap from 100% → 0% holds the
+   visible shape (auteur opacity 1 at both endpoints) so the
+   loop doesn't blink at the boundary. */
+@keyframes shape-cycle-1 {
+  0%, 25%   { opacity: 1; transform: scale(1); }
+  33%, 92%  { opacity: 0; transform: scale(0.92); }
+  100%      { opacity: 1; transform: scale(1); }
+}
+@keyframes shape-cycle-2 {
+  0%, 25%   { opacity: 0; transform: scale(0.92); }
+  33%, 58%  { opacity: 1; transform: scale(1); }
+  66%, 100% { opacity: 0; transform: scale(0.92); }
+}
+@keyframes shape-cycle-3 {
+  0%, 58%   { opacity: 0; transform: scale(0.92); }
+  66%, 92%  { opacity: 1; transform: scale(1); }
+  100%      { opacity: 0; transform: scale(0.92); }
+}
+
+/* ── Slide 5 — final CTAs ──────────────────────────────────── */
+/* Override the default 2-column grid to single-column so the CTAs
+   center across the full modal width. The .slide-N class is on the
+   .crsmart-slide-content element itself, so we compound the selector
+   instead of using a descendant combinator. */
+.crsmart-slide-content.slide-5 {
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+.slide-final {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+}
+.slide-final-title { font-size: 30px; text-align: center; }
+.slide-final-body {
+  max-width: 380px;
+  text-align: center;
+  margin: 0;
+}
+.slide-final-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 420px;
+  margin-top: 8px;
+}
+.tour-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 140ms ease, border-color 140ms ease, transform 80ms ease;
+}
+.tour-cta:hover { background: rgba(255, 255, 255, 0.05); }
+.tour-cta:active { transform: translateY(1px); }
+.tour-cta-primary {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.tour-cta-primary:hover { background: rgba(255, 140, 40, 0.20); }
+.tour-cta-primary .tour-cta-title { color: var(--accent); }
+.tour-cta-title { font-size: 15px; font-weight: 600; }
+.tour-cta-meta { font-size: 12px; color: var(--muted); }
+/* "What happens next" preview — tiny text below the CTA meta,
+   sets expectations so the user isn't surprised by a new tab
+   opening or an OAuth popup. Subtle accent border on the left
+   visually groups it with the parent CTA. */
+.tour-cta-preview {
+  font-size: 11px;
+  color: rgba(255, 140, 40, 0.78);
+  margin-top: 4px;
+  padding-left: 8px;
+  border-left: 2px solid rgba(255, 140, 40, 0.35);
+  letter-spacing: 0.2px;
+}
+
+.tour-dismiss-link {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 6px 10px;
+  margin-top: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.tour-dismiss-link:hover { color: var(--accent); }
+
+/* Help link — sits between the secondary CTA and the dismiss link.
+   Slightly more prominent than dismiss (12.5px vs 12px, no top margin)
+   so it reads as a meaningful "read more" path rather than a final-
+   resort opt-out. Button element so the click delegation can route
+   through the service worker (a direct chrome-extension:// anchor
+   from this context gets blocked as a cross-origin redirect by some
+   content blockers — see tourHelpLinkHtml). The reset below undoes
+   the user-agent button chrome. */
+.tour-help-link {
+  display: inline-block;
+  align-self: center;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-family: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+.tour-help-link:hover,
+.tour-help-link:focus-visible { color: var(--accent); }
+.tour-help-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Narrow-viewport / portrait fallback ───────────────────── */
+@media (max-width: 880px), (max-height: 560px) {
+  .crsmart-tour-modal {
+    min-width: 0;
+    width: 96vw;
+    height: 92vh;
+  }
+  .crsmart-tour-slide { padding: 48px 28px 16px; }
+  .crsmart-slide-content {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .slide-1 .mock-hero { max-width: 100%; }
+}

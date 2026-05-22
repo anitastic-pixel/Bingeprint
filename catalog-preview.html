@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>CR catalog rebuild — preview</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; font: 13px/1.45 system-ui, sans-serif; background: #15161a; color: #e6e6ea; }
+    header { padding: 16px 20px; border-bottom: 1px solid #2a2c33; position: sticky; top: 0; background: #15161a; }
+    h1 { font-size: 16px; margin: 0 0 6px; }
+    #summary { color: #a8abb5; font-size: 12px; }
+    #filters { padding: 10px 20px; display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid #2a2c33; }
+    .chip { padding: 4px 10px; border-radius: 999px; border: 1px solid #353841; background: #1d1f25; color: #cfd2da; cursor: pointer; font-size: 12px; }
+    .chip.active { background: #3a6df0; border-color: #3a6df0; color: #fff; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 7px 12px; border-bottom: 1px solid #23252c; vertical-align: top; }
+    th { position: sticky; top: 0; background: #1a1c22; color: #9aa0ad; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+    tr.suspect td { background: #2a1d1d; }
+    .conf { font-size: 11px; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+    .conf.verified { background: #14361f; color: #6ee7a0; }
+    .conf.best { background: #34320f; color: #e7d96e; }
+    .conf.no-match { background: #2a2c33; color: #a8abb5; }
+    .conf.error { background: #3a1d1d; color: #f08a8a; }
+    .flag { color: #f0a36e; font-weight: 600; }
+    a { color: #7aa2ff; text-decoration: none; }
+    .muted { color: #71757f; }
+    #empty { padding: 40px 20px; color: #a8abb5; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Crunchyroll catalog rebuild — match preview</h1>
+    <div id="summary">loading…</div>
+  </header>
+  <div id="filters"></div>
+  <table>
+    <thead><tr><th>CR title (searched)</th><th>AniList match</th><th>confidence</th><th>flag</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div id="empty" hidden>No preview data yet. Start a rebuild from the popup (dev) and reopen this page.</div>
+  <script type="module" src="catalog-preview.js"></script>
+</body>
+</html>

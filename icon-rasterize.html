@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<!-- Helper page for rasterizing icon.svg → PNG at multiple sizes.
+     Open this file (chrome-extension://<id>/icon-rasterize.html) in
+     Chrome, click the Rasterize button, and 4 PNGs download to your
+     Downloads folder. Move them into the extension folder.
+     This page is dev-only — keep out of the manifest, ignore from
+     production builds. Used because there's no SVG → PNG tool
+     installed on this dev system. -->
+<html>
+<head>
+  <title>Rasterize icon.svg</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 30px; background: #14110f; color: #f0e8df; }
+    button { padding: 12px 20px; font-size: 14px; background: #ff8c28; color: #1a0e00;
+             border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    button:hover { background: #ffa050; }
+    .preview { display: flex; gap: 24px; margin-top: 24px; align-items: flex-end; }
+    .preview canvas { background: #0a0908; border: 1px solid rgba(255,255,255,0.1); }
+    .preview figcaption { text-align: center; font-size: 12px; color: #9a8e80; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h2>Rasterize icon.svg → PNG</h2>
+  <p>This converts the SVG to actual PNGs at the four standard Chrome icon sizes. Click Rasterize, then move the downloaded files (<code>icon16.png</code>, <code>icon32.png</code>, <code>icon48.png</code>, <code>icon128.png</code>) into the extension folder.</p>
+  <button id="rasterize">Rasterize &amp; download all 4</button>
+  <div class="preview" id="preview"></div>
+  <script>
+    const SVG_URL = 'icon.svg';
+    const SIZES = [16, 32, 48, 128];
+
+    async function loadSvgImage() {
+      const img = new Image();
+      img.src = SVG_URL;
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+      return img;
+    }
+
+    function renderToCanvas(img, size) {
+      // Supersample at 4x for sub-128 sizes — cleaner downsampling.
+      const supersample = size <= 48 ? 4 : 1;
+      const renderSize = size * supersample;
+      const big = document.createElement('canvas');
+      big.width = renderSize;
+      big.height = renderSize;
+      const bctx = big.getContext('2d');
+      bctx.imageSmoothingEnabled = true;
+      bctx.imageSmoothingQuality = 'high';
+      bctx.drawImage(img, 0, 0, renderSize, renderSize);
+      if (supersample === 1) return big;
+      const final = document.createElement('canvas');
+      final.width = size;
+      final.height = size;
+      const fctx = final.getContext('2d');
+      fctx.imageSmoothingEnabled = true;
+      fctx.imageSmoothingQuality = 'high';
+      fctx.drawImage(big, 0, 0, size, size);
+      return final;
+    }
+
+    function downloadCanvas(canvas, filename) {
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 'image/png');
+    }
+
+    document.getElementById('rasterize').addEventListener('click', async () => {
+      const preview = document.getElementById('preview');
+      preview.innerHTML = '';
+      const img = await loadSvgImage();
+      for (const size of SIZES) {
+        const canvas = renderToCanvas(img, size);
+        const fig = document.createElement('figure');
+        const cap = document.createElement('figcaption');
+        cap.textContent = `${size}×${size}`;
+        fig.appendChild(canvas);
+        fig.appendChild(cap);
+        preview.appendChild(fig);
+        downloadCanvas(canvas, `icon${size}.png`);
+        // Spacing between downloads so the browser's download manager doesn't coalesce.
+        await new Promise(r => setTimeout(r, 150));
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Import notes — Smart Scoring</title>
+  <link rel="stylesheet" href="import.css" />
+  <style>
+    /* Page-local additions on top of the shared import.css. */
+    .freeform-help {
+      margin: 16px 0;
+      padding: 12px 14px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .freeform-help strong { font-weight: 600; }
+    .freeform-help code {
+      background: rgba(255, 255, 255, 0.06);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+
+    .paste-area {
+      width: 100%;
+      min-height: 240px;
+      box-sizing: border-box;
+      padding: 12px 14px;
+      font-family: ui-monospace, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--fg, #e7e7e7);
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      resize: vertical;
+    }
+    .paste-area:focus {
+      outline: none;
+      border-color: var(--accent, #ff8c28);
+    }
+    .or-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 16px 0;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .or-divider::before,
+    .or-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .privacy-note {
+      margin-top: 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .sniff-section {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 8px 16px;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+    .sniff-section dt {
+      color: rgba(255, 255, 255, 0.6);
+      align-self: center;
+    }
+    .sniff-section dd {
+      margin: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .sniff-section select {
+      background: rgba(0, 0, 0, 0.25);
+      color: var(--fg, #e7e7e7);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 13px;
+    }
+    .sniff-section input[type="checkbox"] {
+      transform: translateY(2px);
+      margin-right: 6px;
+    }
+
+    .preview-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 12px 0;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+    .preview-stats span {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-variant-numeric: tabular-nums;
+    }
+    .preview-stats span strong {
+      font-weight: 600;
+      color: var(--fg, #e7e7e7);
+    }
+
+    .review-pile {
+      margin: 16px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 12px;
+    }
+    .review-pile-head {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: rgba(255, 255, 255, 0.8);
+    }
+    .review-pile-head .count {
+      font-variant-numeric: tabular-nums;
+      color: rgba(255, 255, 255, 0.5);
+      font-weight: 400;
+      margin-left: 4px;
+    }
+    .review-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    .review-row:last-child { border-bottom: none; }
+    .review-row-title {
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .review-row-meta {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.45);
+      margin-top: 2px;
+    }
+    .review-row-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .candidate-btn {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      padding: 4px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--fg, #e7e7e7);
+      font: inherit;
+      font-size: 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .candidate-btn:hover {
+      border-color: var(--accent, #ff8c28);
+      background: rgba(255, 144, 64, 0.08);
+    }
+    .candidate-btn .candidate-year-format {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.45);
+    }
+    .candidate-btn[aria-pressed="true"] {
+      border-color: var(--accent, #ff8c28);
+      background: rgba(255, 144, 64, 0.15);
+    }
+    .skip-btn {
+      padding: 4px 10px;
+      border: 1px dashed rgba(255, 255, 255, 0.18);
+      background: transparent;
+      color: rgba(255, 255, 255, 0.55);
+      font: inherit;
+      font-size: 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .skip-btn:hover {
+      border-color: rgba(255, 255, 255, 0.35);
+      color: rgba(255, 255, 255, 0.85);
+    }
+    .skip-btn[aria-pressed="true"] {
+      border-style: solid;
+      background: rgba(255, 255, 255, 0.05);
+      color: rgba(255, 255, 255, 0.65);
+    }
+
+    .working-substatus {
+      margin-top: 6px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      font-variant-numeric: tabular-nums;
+      min-height: 1em;
+    }
+    .dropzone.dragover {
+      border-color: var(--accent, #ff8c28);
+      background: rgba(255, 144, 64, 0.08);
+    }
+  </style>
+</head>
+<body>
+  <main class="import-shell">
+    <header class="import-header">
+      <h1>Import your notes</h1>
+      <p class="muted">
+        Paste your watch list. We'll match titles and flag anything we can't find.
+      </p>
+    </header>
+
+    <!-- Stage 1: pick. -->
+    <section class="stage stage-pick" data-stage="pick">
+      <div class="freeform-help">
+        <strong>Quick start — one show per line:</strong>
+<pre style="margin: 6px 0 8px; padding: 8px 10px; background: rgba(0,0,0,0.25); border-radius: 4px; font-size: 12px; line-height: 1.5; overflow-x: auto;">Vinland Saga — 10/10
+Steins;Gate — 10/10
+Bleach — 4/10</pre>
+
+        <strong>Group with section headers (optional):</strong>
+<pre style="margin: 6px 0 8px; padding: 8px 10px; background: rgba(0,0,0,0.25); border-radius: 4px; font-size: 12px; line-height: 1.5; overflow-x: auto;">## Completed
+Vinland Saga — 10
+Steins;Gate — 10
+
+## Dropped
+Bleach — 4</pre>
+
+        <div style="margin-top: 8px; font-size: 12px; color: rgba(255,255,255,0.55);">
+          We'll automatically handle: typos in show names, season suffixes (<code>S1</code>, <code>Final Season</code>), comments after <code>—</code>, year hints in parens, and acronyms (FMAB, JJK, MHA).
+        </div>
+      </div>
+
+      <textarea class="paste-area" id="paste-area" placeholder="Paste your list here…&#10;&#10;Vinland Saga — 10/10&#10;Steins;Gate — 10/10&#10;Bleach — 4/10"></textarea>
+
+      <div class="or-divider">or</div>
+
+      <label class="dropzone" id="dropzone">
+        <span class="dropzone-icon" aria-hidden="true">↓</span>
+        <span class="dropzone-prompt">Drop a text file here</span>
+        <span class="dropzone-or">or</span>
+        <span class="dropzone-button">choose a file…</span>
+        <input type="file" accept=".txt,.md,.csv,.tsv,text/plain,text/markdown" id="file-input" />
+      </label>
+
+      <div class="action-row">
+        <button type="button" class="btn-primary" id="continue-btn" disabled>Continue</button>
+      </div>
+
+      <div class="status-line" id="pick-status" aria-live="polite"></div>
+
+      <p class="privacy-note">
+        Titles we can't match locally are sent to AniList to find them.
+        Scores, status, and favorites stay on your device.
+      </p>
+    </section>
+
+    <!-- Stage 2: preview (sniffer confirmation). -->
+    <section class="stage stage-preview hidden" data-stage="preview">
+      <div class="card">
+        <header class="card-head">
+          <span class="card-head-title">Does this look right?</span>
+          <button type="button" class="text-btn" id="preview-back-btn">back</button>
+        </header>
+
+        <div class="preview-stats" id="preview-stats"></div>
+
+        <dl class="sniff-section">
+          <dt><label for="score-scale-select">Score format</label></dt>
+          <dd>
+            <select id="score-scale-select">
+              <option value="none">(no scores)</option>
+              <option value="10pt-slash">10-point — like 9/10</option>
+              <option value="5pt-slash">5-point — like 4/5</option>
+              <option value="5-star">5-star — like ★★★★</option>
+              <option value="tier">Letter tiers — S, A, B, C, D</option>
+              <option value="word">Words — peak/mid/slop</option>
+              <option value="10pt-bare">Bare numbers — last on each line</option>
+            </select>
+          </dd>
+
+        </dl>
+
+        <!-- Inheritance toggles auto-apply based on sniffer detection.
+             Pre-2026-05-19 these were user-facing checkboxes asking
+             "use ## Completed headers as status?" — but the sniffer
+             pre-checked them correctly 100% of the time in the
+             walkthrough tests, so the UI confirm step was friction
+             with zero value. They're still wired in the controller
+             (just always-on when sniff detected them); the hidden
+             inputs preserve the existing parseFreeformInput options
+             contract. -->
+        <input type="checkbox" id="use-header-state" hidden checked />
+        <input type="checkbox" id="use-header-favorite" hidden checked />
+
+        <div class="action-row">
+          <button type="button" class="btn-primary" id="parse-btn">Find shows</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stage 2.5: analyzing — local matching + AL Search fallback can
+         take 30s–2min for large lists with many cache misses. Live
+         progress is essential. -->
+    <section class="stage stage-analyzing hidden" data-stage="analyzing">
+      <div class="working-spinner" aria-hidden="true"></div>
+      <div class="working-status" id="analyzing-status">Finding your shows…</div>
+      <div class="working-substatus" id="analyzing-substatus"></div>
+      <div class="action-row">
+        <button type="button" class="text-btn" id="analyzing-cancel-btn">cancel</button>
+      </div>
+    </section>
+
+    <!-- Stage 3: review (low-confidence + unmatched piles). -->
+    <section class="stage stage-review hidden" data-stage="review">
+      <div class="card">
+        <header class="card-head">
+          <span class="card-head-title">Quick review</span>
+          <button type="button" class="text-btn" id="review-back-btn">back</button>
+        </header>
+
+        <div class="preview-stats" id="review-summary"></div>
+
+        <div class="review-pile hidden" id="low-confidence-pile">
+          <div class="review-pile-head">
+            Pick the right show <span class="count" id="low-conf-count"></span>
+          </div>
+          <div id="low-conf-rows"></div>
+        </div>
+
+        <div class="review-pile hidden" id="unmatched-pile">
+          <div class="review-pile-head">
+            We couldn't find these <span class="count" id="unmatched-count"></span>
+          </div>
+          <div id="unmatched-rows"></div>
+        </div>
+
+        <div class="action-row">
+          <button type="button" class="btn-primary" id="apply-btn">Apply</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stage 4: working. -->
+    <section class="stage stage-working hidden" data-stage="working">
+      <div class="working-spinner" aria-hidden="true"></div>
+      <div class="working-status" id="working-status">Starting…</div>
+      <div class="working-substatus" id="working-substatus"></div>
+    </section>
+
+    <!-- Stage 5: done. -->
+    <section class="stage stage-done hidden" data-stage="done">
+      <div class="card">
+        <header class="card-head">
+          <span class="card-head-title">✓ Imported</span>
+        </header>
+        <div class="restore-summary" id="done-summary"></div>
+        <div class="action-row">
+          <button type="button" class="btn-primary" id="close-tab-btn">Close tab</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stage 6: error. -->
+    <section class="stage stage-error hidden" data-stage="error">
+      <div class="card card-error">
+        <header class="card-head">
+          <span class="card-head-title">✗ Couldn't import</span>
+        </header>
+        <div class="error-message" id="error-message"></div>
+        <div class="action-row">
+          <button type="button" class="btn-primary" id="error-retry-btn">Start over</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="import-freeform.js"></script>
+</body>
+</html>

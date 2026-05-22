@@ -1,0 +1,62 @@
+<!--
+  Smart Scoring extension icon — square 128×128.
+  Designed to read at every Chrome icon slot:
+    16×16  toolbar (favicon-tier; only the silhouette + ring colour land)
+    32×32  extension page list
+    48×48  Chrome's extension manager
+    128×128 detail / web store
+
+  Visual language matches the in-page Smart Score card: dark rounded
+  surface, orange progress ring at ~85% (the band where TRUST ME
+  scores live), thick stroke so the ring stays legible when the icon
+  is downsampled to 16px. The inner accent dot is the centre of the
+  scoring "target" — collapses cleanly at small sizes.
+
+  Why no number / wordmark inside: legibility cliff. Anything below
+  ~24px renders the digit as a smudge. The ring shape is the icon.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="iconBg" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1c1916"/>
+      <stop offset="100%" stop-color="#0a0908"/>
+    </linearGradient>
+    <linearGradient id="iconRing" x1="0" y1="0" x2="0" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffa050"/>
+      <stop offset="100%" stop-color="#c45a10"/>
+    </linearGradient>
+    <radialGradient id="iconGlow" cx="64" cy="64" r="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="rgba(255, 140, 40, 0.18)"/>
+      <stop offset="100%" stop-color="rgba(255, 140, 40, 0)"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Rounded-square background. Corner radius 24/128 ≈ 19%, matches
+       Chrome's own rounded extension chip aesthetic. -->
+  <rect width="128" height="128" rx="24" fill="url(#iconBg)"/>
+
+  <!-- Soft inner glow behind the ring so the orange feels lit rather
+       than flat-applied. Sits below the track + progress strokes. -->
+  <rect width="128" height="128" rx="24" fill="url(#iconGlow)"/>
+
+  <!-- Track ring — faint white, full circle. Keeps the visual at small
+       sizes from looking like an unfinished arc. r=42, stroke 11.
+       Circumference = 2π × 42 ≈ 263.9. -->
+  <circle cx="64" cy="64" r="42" fill="none"
+          stroke="rgba(255, 255, 255, 0.08)" stroke-width="11"/>
+
+  <!-- Progress ring — 85% fill = TRUST ME territory. Rotated -90deg
+       so the gap sits at top-right (reads as 12-o'clock-ish), which
+       is the conventional "meter starts at top" orientation.
+       263.9 × 0.15 = 39.6 dashoffset. -->
+  <circle cx="64" cy="64" r="42" fill="none"
+          stroke="url(#iconRing)" stroke-width="11" stroke-linecap="round"
+          stroke-dasharray="263.9" stroke-dashoffset="39.6"
+          transform="rotate(-90 64 64)"/>
+
+  <!-- Centre target — a single solid dot at the scoring target. The
+       brightest pixel cluster; what survives at 16×16. Slight shadow
+       layer below it gives a subtle depth pop. -->
+  <circle cx="64" cy="64" r="11" fill="#1c1916"/>
+  <circle cx="64" cy="64" r="9" fill="url(#iconRing)"/>
+</svg>
